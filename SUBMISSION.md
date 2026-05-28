@@ -2,7 +2,7 @@
 
 ## One-line Pitch
 
-MatchPulse is a World Cup prediction market on X Layer where a Uniswap v4-style Hook turns live match volatility into dynamic swap fees.
+MatchPulse is an international football cup prediction market on X Layer where a Uniswap v4-style Hook turns live match volatility into dynamic swap fees.
 
 ## Links
 
@@ -33,7 +33,7 @@ Outcome tokens:
 
 ## What Was Built
 
-- A World Cup market factory that creates HOME / DRAW / AWAY prediction tokens.
+- A football cup market factory that creates HOME / DRAW / AWAY prediction tokens.
 - A match oracle mock that pushes phase, minute, score, red-card and upset signals.
 - A Hook contract with `beforeSwap` and `afterSwap` callbacks.
 - A dynamic fee engine that increases LP protection during live, late-game, close-score, red-card and upset windows.
@@ -42,6 +42,8 @@ Outcome tokens:
 - Wallet connection, X Layer testnet switching, and a live write button that calls `mintCompleteSet(matchId)` on the deployed factory.
 - Live reads from `MatchPulseHook.quoteFee(matchId, 30)`, Hook `poolMetrics(poolId)`, and ERC20 `balanceOf` for the three outcome tokens.
 - A real X Layer testnet Hook test transaction button that calls `SimulatedPoolManager.simulateSwap(poolId, ...)` and triggers Hook `beforeSwap` / `afterSwap` on-chain.
+- A testnet settlement loop that can write the final mock score, call `settle(matchId)`, and redeem winning tokens through `redeem(matchId, amount)`.
+- A clearly labeled local-only dynamic match simulation that changes frontend intensity, odds, and fee visuals without pretending to be the chain source of truth.
 
 ## Hook Fee Model
 
@@ -60,14 +62,15 @@ Base fee starts at `30 bps` and is capped at `300 bps`.
 ## Demo Flow
 
 1. Open the live demo.
-2. Show the X Layer deployment panel and contract addresses.
-3. Click the refresh button to advance match events.
-4. Watch the Hook fee move from pre-match baseline to live volatility pricing.
-5. Use the local simulation button only to show frontend market movement.
-6. Connect a wallet on X Layer testnet.
-7. Click `Mint complete set` to write to the deployed testnet factory.
-8. Click the on-chain Hook test transaction to trigger `SimulatedPoolManager.simulateSwap`.
-9. Open the transactions in the OKX X Layer testnet explorer.
+2. Let the dynamic match simulation run and show the local-only label.
+3. Open the Chain tab and show deployment addresses, Hook quote, pool metrics, and token balances.
+4. Connect a wallet on X Layer testnet.
+5. Click `Mint complete set` to write to the deployed testnet factory.
+6. Click the on-chain Hook test transaction to trigger `SimulatedPoolManager.simulateSwap`.
+7. If using the owner wallet, write the final mock score.
+8. Call `settle(matchId)` from the UI.
+9. Redeem winning tokens with `redeem(matchId, amount)`.
+10. Open the transactions in the OKX X Layer testnet explorer.
 
 Verified Hook test transaction:
 
@@ -81,7 +84,9 @@ Prediction markets face toxic order flow when real-world events suddenly change 
 
 The MVP uses `SimulatedPoolManager` so judges can run and inspect the full Hook lifecycle without relying on an external Uniswap v4 deployment package. The Hook interface and flow are intentionally aligned with v4-style `beforeSwap` and `afterSwap` callbacks. The next production step is replacing the simulated manager with the official Uniswap v4 PoolManager and required hook permission address flow.
 
-The frontend explicitly labels local-only simulation separately from real testnet writes. Real testnet writes currently include `mintCompleteSet` and `simulateSwap`; real reads include Hook quote, pool metrics and outcome-token balances.
+The frontend explicitly labels local-only simulation separately from real testnet writes. Real testnet writes currently include `mintCompleteSet`, `simulateSwap`, owner-gated mock oracle finalization, `settle`, and `redeem`; real reads include Hook quote, pool metrics, market collateral/settlement state, and outcome-token balances.
+
+See `ROADMAP.md` for the remaining path from testnet beta to production MVP.
 
 ## Validation
 

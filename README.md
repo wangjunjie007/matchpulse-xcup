@@ -1,12 +1,12 @@
 # MatchPulse X Cup
 
-MatchPulse is a World Cup prediction market MVP for X Layer. The product combines outcome tokens, a match-state oracle, and a Uniswap v4-style Hook that dynamically prices live match volatility into swap fees.
+MatchPulse is an international football cup prediction market MVP for X Layer. The product combines outcome tokens, a match-state oracle, and a Uniswap v4-style Hook that dynamically prices live match volatility into swap fees.
 
 Live demo: https://wangjunjie007.github.io/matchpulse-xcup/
 
 ## Why This Fits X Cup
 
-- World Cup native: every pool is tied to a match and its live state.
+- Football cup native: every pool is tied to a match and its live state.
 - X Layer ready: contracts are Foundry-based and configured for X Layer mainnet/testnet RPCs.
 - Hook-centered: `MatchPulseHook` exposes `beforeSwap` and `afterSwap` callbacks and returns deterministic fee quotes from oracle state.
 - AI Agent angle: the UI includes an agent co-pilot flow for market creation, fee explanations, and post-match recaps.
@@ -91,16 +91,20 @@ X Layer chain IDs:
 
 ## Demo Script For Judges
 
-1. Start on pre-match state: baseline fee is `30 bps`.
-2. Click the refresh icon to advance match events.
-3. Show that kickoff, close-score, red-card and upset events raise Hook fees.
-4. Simulate a swap and point to the event log.
-5. Explain the contract test proving final settlement and winner redemption.
+1. Open the live demo and let the dynamic match simulation run for a few seconds.
+2. Show that the frontend labels the match animation as local-only simulation.
+3. Open the Chain tab and connect a wallet on X Layer testnet.
+4. Click `Mint complete set` to write to the deployed testnet factory.
+5. Click the on-chain Hook test transaction to trigger `SimulatedPoolManager.simulateSwap`.
+6. Review Hook quote, pool metrics, outcome-token balances, and market collateral.
+7. For the owner wallet, write the final mock score through `MatchOracleMock.updateMatch`.
+8. Settle the market through `WorldCupMarketFactory.settle`.
+9. Redeem the winning token through `WorldCupMarketFactory.redeem`.
 
 ## Next Production Steps
 
-- Replace `MatchOracleMock` with a signed oracle feed or UMA-style optimistic oracle.
-- Replace `SimulatedPoolManager` with real Uniswap v4 PoolManager integration.
-- Add wallet connection and X Layer transaction writes in the UI.
-- Add agent-run market creation and social recap posting.
-- Add liquidity incentives for LPs who stay active through high-volatility windows.
+- Replace `MatchOracleMock` with a signed oracle feed or optimistic oracle.
+- Replace `SimulatedPoolManager` with real Uniswap v4 PoolManager integration or an X Layer-native equivalent.
+- Add event indexing for `BundleMinted`, `MarketSettled`, `Redeemed`, and Hook fee events.
+- Add owner-aware oracle controls and a portfolio view.
+- See `ROADMAP.md` for the testnet beta and production MVP plan.

@@ -76,6 +76,13 @@ type PoolMetricsState = {
   lastReason: string;
 };
 
+type MarketState = {
+  totalCollateral: string;
+  winningSupplyAtSettlement: string;
+  winner: number;
+  settled: boolean;
+};
+
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] | object[] }) => Promise<unknown>;
   on?: (event: string, listener: (...args: unknown[]) => void) => void;
@@ -106,9 +113,61 @@ const xLayerTestnet = {
 const factoryAbi = [
   {
     type: "function",
+    name: "markets",
+    stateMutability: "view",
+    inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: [
+      { name: "matchId", type: "bytes32" },
+      { name: "homeToken", type: "address" },
+      { name: "drawToken", type: "address" },
+      { name: "awayToken", type: "address" },
+      { name: "totalCollateral", type: "uint256" },
+      { name: "winningSupplyAtSettlement", type: "uint256" },
+      { name: "winner", type: "uint8" },
+      { name: "exists", type: "bool" },
+      { name: "settled", type: "bool" }
+    ]
+  },
+  {
+    type: "function",
     name: "mintCompleteSet",
     stateMutability: "payable",
     inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "settle",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "redeem",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "matchId", type: "bytes32" },
+      { name: "amount", type: "uint256" }
+    ],
+    outputs: []
+  }
+] as const;
+
+const oracleAbi = [
+  {
+    type: "function",
+    name: "updateMatch",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "matchId", type: "bytes32" },
+      { name: "phase", type: "uint8" },
+      { name: "minute", type: "uint8" },
+      { name: "homeScore", type: "uint8" },
+      { name: "awayScore", type: "uint8" },
+      { name: "redCards", type: "uint8" },
+      { name: "upsetSignal", type: "bool" }
+    ],
     outputs: []
   }
 ] as const;
@@ -277,6 +336,20 @@ const copy = {
     chainHookTest: "链上 Hook 测试交易",
     chainHookTestNote: "调用 SimulatedPoolManager.simulateSwap，在链上触发 Hook beforeSwap / afterSwap。",
     hookTestSubmitted: "链上 Hook 测试交易已提交",
+    settlementPanel: "Testnet 结算闭环",
+    finalOracleWrite: "写入终场比分",
+    finalOracleNote: "owner 钱包可调用 MatchOracleMock.updateMatch，把测试网比赛置为 2-1 终场。",
+    settleMarket: "结算市场",
+    redeemWinner: "赎回赢家 Token",
+    settlementSubmitted: "结算交易已提交",
+    redeemSubmitted: "赎回交易已提交",
+    oracleSubmitted: "终场比分已写入",
+    marketStatus: "市场状态",
+    settled: "已结算",
+    notSettled: "未结算",
+    winner: "赢家",
+    collateral: "抵押池",
+    redeemable: "可赎回",
     tokenBalances: "用户结果 Token 余额",
     noWalletForBalances: "连接钱包后显示 ARG / DRAW / BRA 余额。",
     lastPoolMetrics: "链上池指标",
@@ -407,6 +480,20 @@ const copy = {
     chainHookTest: "On-chain Hook test tx",
     chainHookTestNote: "Calls SimulatedPoolManager.simulateSwap and triggers Hook beforeSwap / afterSwap on-chain.",
     hookTestSubmitted: "On-chain Hook test submitted",
+    settlementPanel: "Testnet settlement loop",
+    finalOracleWrite: "Write final score",
+    finalOracleNote: "Owner wallet can call MatchOracleMock.updateMatch to finalize the testnet match at 2-1.",
+    settleMarket: "Settle market",
+    redeemWinner: "Redeem winner tokens",
+    settlementSubmitted: "Settlement submitted",
+    redeemSubmitted: "Redemption submitted",
+    oracleSubmitted: "Final score submitted",
+    marketStatus: "Market status",
+    settled: "Settled",
+    notSettled: "Open",
+    winner: "Winner",
+    collateral: "Collateral",
+    redeemable: "Redeemable",
     tokenBalances: "User outcome token balances",
     noWalletForBalances: "Connect wallet to show ARG / DRAW / BRA balances.",
     lastPoolMetrics: "On-chain pool metrics",
@@ -508,6 +595,7 @@ function App() {
   const [walletBalance, setWalletBalance] = useState<string>("--");
   const [txHash, setTxHash] = useState<HexValue | null>(null);
   const [hookTxHash, setHookTxHash] = useState<HexValue | null>(null);
+  const [settlementTxHash, setSettlementTxHash] = useState<HexValue | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [chainQuote, setChainQuote] = useState<ChainQuote>({ feeBps: 30, volatilityScore: 0, reason: "scheduled baseline", source: "local" });
@@ -517,6 +605,12 @@ function App() {
     swapCount: "--",
     lastFeeBps: "--",
     lastReason: "--"
+  });
+  const [marketState, setMarketState] = useState<MarketState>({
+    totalCollateral: "--",
+    winningSupplyAtSettlement: "--",
+    winner: 0,
+    settled: false
   });
   const [chainReadBusy, setChainReadBusy] = useState(false);
   const [logs, setLogs] = useState<EventLog[]>(initialLogs("zh"));
@@ -684,7 +778,7 @@ function App() {
   async function refreshChainData() {
     setChainReadBusy(true);
     try {
-      const [quote, metrics] = await Promise.all([
+      const [quote, metrics, market] = await Promise.all([
         publicClient.readContract({
           address: deployment.contracts.MatchPulseHook as HexAddress,
           abi: hookAbi,
@@ -696,6 +790,12 @@ function App() {
           abi: hookAbi,
           functionName: "poolMetrics",
           args: [poolId]
+        }),
+        publicClient.readContract({
+          address: deployment.contracts.WorldCupMarketFactory as HexAddress,
+          abi: factoryAbi,
+          functionName: "markets",
+          args: [deployment.matchId as HexValue]
         })
       ]);
       setChainQuote({
@@ -709,6 +809,12 @@ function App() {
         swapCount: metrics[1].toString(),
         lastFeeBps: metrics[2].toString(),
         lastReason: metrics[5] || "--"
+      });
+      setMarketState({
+        totalCollateral: formatEther(market[4]),
+        winningSupplyAtSettlement: formatEther(market[5]),
+        winner: Number(market[6]),
+        settled: Boolean(market[8])
       });
       if (walletAddress) await refreshTokenBalances(walletAddress);
     } catch (error) {
@@ -923,6 +1029,188 @@ function App() {
             detail: `${t.hookTestSubmitted}: ${shortHash(hash)}.`,
             tone
           },
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function writeFinalScoreOnChain() {
+    setWalletError(null);
+    setSettlementTxHash(null);
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError(t.noWallet);
+      toast.error(t.noWallet);
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    if (walletChainId !== deployment.chainId) {
+      await switchToXLayer();
+      return;
+    }
+
+    setWalletBusy(true);
+    const id = toast.loading(t.finalOracleWrite);
+    try {
+      const client = createWalletClient({
+        account: walletAddress,
+        chain: xLayerTestnet,
+        transport: custom(provider)
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.MatchOracleMock as HexAddress,
+        abi: oracleAbi,
+        functionName: "updateMatch",
+        args: [deployment.matchId as HexValue, 6, 95, 2, 1, 0, false]
+      });
+      setSettlementTxHash(hash);
+      toast.success(t.oracleSubmitted, { id, description: shortHash(hash) });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refreshChainData();
+      const log: EventLog = {
+        id: Date.now(),
+        label: t.finalOracleWrite,
+        detail: `${t.oracleSubmitted}: ${shortHash(hash)}.`,
+        tone: "ok"
+      };
+      setLogs((current) =>
+        [
+          log,
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function settleOnXLayer() {
+    setWalletError(null);
+    setSettlementTxHash(null);
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError(t.noWallet);
+      toast.error(t.noWallet);
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    if (walletChainId !== deployment.chainId) {
+      await switchToXLayer();
+      return;
+    }
+
+    setWalletBusy(true);
+    const id = toast.loading(t.settleMarket);
+    try {
+      const client = createWalletClient({
+        account: walletAddress,
+        chain: xLayerTestnet,
+        transport: custom(provider)
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.WorldCupMarketFactory as HexAddress,
+        abi: factoryAbi,
+        functionName: "settle",
+        args: [deployment.matchId as HexValue]
+      });
+      setSettlementTxHash(hash);
+      toast.success(t.settlementSubmitted, { id, description: shortHash(hash) });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refreshChainData();
+      const log: EventLog = {
+        id: Date.now(),
+        label: t.settleMarket,
+        detail: `${t.settlementSubmitted}: ${shortHash(hash)}.`,
+        tone: "ok"
+      };
+      setLogs((current) =>
+        [
+          log,
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function redeemOnXLayer() {
+    setWalletError(null);
+    setSettlementTxHash(null);
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError(t.noWallet);
+      toast.error(t.noWallet);
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    if (walletChainId !== deployment.chainId) {
+      await switchToXLayer();
+      return;
+    }
+    if (!marketState.settled) {
+      toast.error(t.notSettled);
+      return;
+    }
+
+    const winningOutcome = outcomeFromWinner(marketState.winner);
+    const balance = tokenBalances[winningOutcome];
+    if (balance === "--" || Number(balance) <= 0) {
+      toast.error(language === "zh" ? "当前钱包没有赢家 Token 可赎回。" : "Current wallet has no winning tokens to redeem.");
+      return;
+    }
+
+    setWalletBusy(true);
+    const id = toast.loading(t.redeemWinner);
+    try {
+      const client = createWalletClient({
+        account: walletAddress,
+        chain: xLayerTestnet,
+        transport: custom(provider)
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.WorldCupMarketFactory as HexAddress,
+        abi: factoryAbi,
+        functionName: "redeem",
+        args: [deployment.matchId as HexValue, parseEther(balance)]
+      });
+      setSettlementTxHash(hash);
+      toast.success(t.redeemSubmitted, { id, description: shortHash(hash) });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refreshChainData();
+      const log: EventLog = {
+        id: Date.now(),
+        label: t.redeemWinner,
+        detail: `${t.redeemSubmitted}: ${shortHash(hash)}.`,
+        tone: "ok"
+      };
+      setLogs((current) =>
+        [
+          log,
           ...current
         ].slice(0, 6)
       );
@@ -1304,6 +1592,42 @@ function App() {
                 <p className="walletNote">{poolMetricsState.lastReason === "--" ? t.chainHookTestNote : translateFeeReason(poolMetricsState.lastReason, language)}</p>
               </section>
 
+              <section className="panelSurface settlementPanel">
+                <PanelTitle icon={<CheckCircle2 size={18} />} label={t.settlementPanel} />
+                <div className="walletStatus">
+                  <StatTile label={t.marketStatus} value={marketState.settled ? t.settled : t.notSettled} />
+                  <StatTile label={t.collateral} value={marketState.totalCollateral === "--" ? "--" : `${formatDecimal(marketState.totalCollateral)} OKB`} />
+                  <StatTile label={t.winner} value={marketState.settled ? outcomeCopy[language][outcomeFromWinner(marketState.winner)] : "--"} />
+                </div>
+                <div className="walletStatus settlementStats">
+                  <StatTile label={t.redeemable} value={marketState.settled ? redeemableBalanceLabel(tokenBalances, marketState.winner) : "--"} />
+                  <StatTile
+                    label={t.outcomeTokens}
+                    value={marketState.winningSupplyAtSettlement === "--" ? "--" : `${formatDecimal(marketState.winningSupplyAtSettlement)}`}
+                  />
+                </div>
+                <div className="walletActions threeActions">
+                  <button type="button" className="secondaryButton" onClick={writeFinalScoreOnChain} disabled={walletBusy}>
+                    <Radio size={17} />
+                    {t.finalOracleWrite}
+                  </button>
+                  <button type="button" className="secondaryButton" onClick={settleOnXLayer} disabled={walletBusy || marketState.settled}>
+                    <CheckCircle2 size={17} />
+                    {t.settleMarket}
+                  </button>
+                  <button type="button" className="primaryButton noTopMargin" onClick={redeemOnXLayer} disabled={walletBusy || !marketState.settled}>
+                    <CircleDollarSign size={17} />
+                    {t.redeemWinner}
+                  </button>
+                </div>
+                <p className="walletNote">{t.finalOracleNote}</p>
+                {settlementTxHash ? (
+                  <a className="txLink" href={`${explorerBase}/tx/${settlementTxHash}`} target="_blank" rel="noreferrer">
+                    {t.settlementPanel} <ExternalLink size={14} />
+                  </a>
+                ) : null}
+              </section>
+
               <DeploymentPanel language={language} />
             </section>
           </Tabs.Content>
@@ -1610,6 +1934,26 @@ function adjustBookForMatch(current: Record<Outcome, number>, state: MatchState,
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function outcomeFromWinner(winner: number): Outcome {
+  if (winner === 1) return "Draw";
+  if (winner === 2) return "Brazil";
+  return "Argentina";
+}
+
+function redeemableBalanceLabel(balances: TokenBalances, winner: number) {
+  const outcome = outcomeFromWinner(winner);
+  const balance = balances[outcome];
+  return balance === "--" ? "--" : `${formatDecimal(balance)} ${outcome === "Argentina" ? "ARG" : outcome === "Brazil" ? "BRA" : "DRAW"}`;
+}
+
+function formatDecimal(value: string) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return value;
+  if (numeric === 0) return "0";
+  if (numeric < 0.0001) return numeric.toExponential(2);
+  return numeric.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
 function crowdHeatLabel(score: number, language: Language) {
