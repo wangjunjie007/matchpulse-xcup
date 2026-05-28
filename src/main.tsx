@@ -40,6 +40,8 @@ type EthereumProvider = {
 declare global {
   interface Window {
     ethereum?: EthereumProvider;
+    okxwallet?: EthereumProvider | { ethereum?: EthereumProvider };
+    web3?: { currentProvider?: EthereumProvider };
   }
 }
 
@@ -170,10 +172,12 @@ function App() {
   const tokens = (stake - feeCost) / Math.max(impliedPrice, 0.01);
   const maxOutcome = Object.entries(book).sort((a, b) => b[1] - a[1])[0][0] as Outcome;
   const walletReady = walletAddress && walletChainId === deployment.chainId;
+  const providerName = getWalletProviderName();
   const explorerBase = deployment.explorer.replace(/\/$/, "");
 
   useEffect(() => {
-    if (!window.ethereum) return;
+    const provider = getWalletProvider();
+    if (!provider) return;
 
     const handleAccounts = (accounts: unknown) => {
       const [first] = Array.isArray(accounts) ? accounts : [];
@@ -185,30 +189,31 @@ function App() {
       }
     };
 
-    window.ethereum
+    provider
       .request({ method: "eth_accounts" })
       .then(handleAccounts)
       .catch(() => undefined);
-    window.ethereum
+    provider
       .request({ method: "eth_chainId" })
       .then(handleChain)
       .catch(() => undefined);
-    window.ethereum.on?.("accountsChanged", handleAccounts);
-    window.ethereum.on?.("chainChanged", handleChain);
+    provider.on?.("accountsChanged", handleAccounts);
+    provider.on?.("chainChanged", handleChain);
 
     return () => {
-      window.ethereum?.removeListener?.("accountsChanged", handleAccounts);
-      window.ethereum?.removeListener?.("chainChanged", handleChain);
+      provider.removeListener?.("accountsChanged", handleAccounts);
+      provider.removeListener?.("chainChanged", handleChain);
     };
   }, []);
 
   useEffect(() => {
-    if (!window.ethereum || !walletAddress) {
+    const provider = getWalletProvider();
+    if (!provider || !walletAddress) {
       setWalletBalance("--");
       return;
     }
 
-    window.ethereum
+    provider
       .request({ method: "eth_getBalance", params: [walletAddress, "latest"] })
       .then((balance) => {
         if (typeof balance === "string") {
@@ -256,14 +261,15 @@ function App() {
 
   async function connectWallet() {
     setWalletError(null);
-    if (!window.ethereum) {
-      setWalletError("No injected wallet found. Install OKX Wallet or MetaMask.");
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError("No injected wallet found. Open this page in OKX Wallet browser, or install/enable OKX Wallet or MetaMask.");
       return;
     }
     setWalletBusy(true);
     try {
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
-      const chainId = (await window.ethereum.request({ method: "eth_chainId" })) as string;
+      const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
+      const chainId = (await provider.request({ method: "eth_chainId" })) as string;
       setWalletAddress((accounts[0] as HexAddress) ?? null);
       setWalletChainId(Number.parseInt(chainId, 16));
     } catch (error) {
@@ -275,13 +281,14 @@ function App() {
 
   async function switchToXLayer() {
     setWalletError(null);
-    if (!window.ethereum) {
-      setWalletError("No injected wallet found. Install OKX Wallet or MetaMask.");
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError("No injected wallet found. Open this page in OKX Wallet browser, or install/enable OKX Wallet or MetaMask.");
       return;
     }
     setWalletBusy(true);
     try {
-      await window.ethereum.request({
+      await provider.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: "0x7a0" }]
       });
@@ -289,7 +296,7 @@ function App() {
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? Number(error.code) : 0;
       if (code === 4902) {
-        await window.ethereum.request({
+        await provider.request({
           method: "wallet_addEthereumChain",
           params: [
             {
@@ -313,8 +320,9 @@ function App() {
   async function mintOnXLayer() {
     setWalletError(null);
     setTxHash(null);
-    if (!window.ethereum) {
-      setWalletError("No injected wallet found. Install OKX Wallet or MetaMask.");
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError("No injected wallet found. Open this page in OKX Wallet browser, or install/enable OKX Wallet or MetaMask.");
       return;
     }
     if (!walletAddress) {
@@ -331,7 +339,7 @@ function App() {
       const client = createWalletClient({
         account: walletAddress,
         chain: xLayerTestnet,
-        transport: custom(window.ethereum)
+        transport: custom(provider)
       });
       const hash = await client.writeContract({
         address: deployment.contracts.WorldCupMarketFactory as HexAddress,
@@ -385,6 +393,13 @@ function App() {
         <div className="chainActionCopy">
           <span>Live X Layer controls</span>
           <strong>{walletReady ? `Connected ${shortHash(walletAddress)}` : "Connect wallet and write to testnet"}</strong>
+          <small>
+            {walletError
+              ? walletError
+              : providerName
+                ? `Detected ${providerName}`
+                : "No wallet provider detected yet"}
+          </small>
         </div>
         <a
           className="chainActionLink"
@@ -675,6 +690,20 @@ function readError(error: unknown) {
   }
   if (error instanceof Error) return error.message;
   return "Wallet request failed.";
+}
+
+function getWalletProvider(): EthereumProvider | undefined {
+  if (window.okxwallet && "request" in window.okxwallet) return window.okxwallet;
+  if (window.okxwallet && "ethereum" in window.okxwallet) return window.okxwallet.ethereum;
+  if (window.ethereum) return window.ethereum;
+  return window.web3?.currentProvider;
+}
+
+function getWalletProviderName() {
+  if (window.okxwallet) return "OKX Wallet";
+  if (window.ethereum) return "injected wallet";
+  if (window.web3?.currentProvider) return "legacy web3 wallet";
+  return "";
 }
 
 createRoot(document.getElementById("root") as HTMLElement).render(<App />);

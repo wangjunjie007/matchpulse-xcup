@@ -134,6 +134,17 @@ h1 {
   white-space: nowrap;
 }
 
+.chainActionCopy small {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #f3c48d;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chainActionLink {
   display: inline-flex;
   align-items: center;
