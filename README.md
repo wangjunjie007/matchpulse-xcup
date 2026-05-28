@@ -4,7 +4,7 @@ MatchPulse is an international football cup prediction market MVP for X Layer. T
 
 Live demo: https://wangjunjie007.github.io/matchpulse-xcup/
 
-Demo video: [docs/matchpulse-xcup-demo.mp4](docs/matchpulse-xcup-demo.mp4)
+Demo video: [1080p/60fps English narrated walkthrough](docs/matchpulse-xcup-demo.mp4)
 
 ## Why This Fits X Cup
 
