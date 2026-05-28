@@ -15,8 +15,25 @@ type LiquidityBandRebalanced @entity(immutable: true) {
   poolId: Bytes!
   matchId: Bytes!
   concentrationBps: BigInt!
+  activeTick: BigInt!
   tickLower: BigInt!
   tickUpper: BigInt!
+  vaultCreditBps: BigInt!
+  reason: String!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ActiveLiquidityRebalanced @entity(immutable: true) {
+  id: Bytes!
+  poolId: Bytes!
+  matchId: Bytes!
+  sender: Bytes!
+  activeTick: BigInt!
+  tickLower: BigInt!
+  tickUpper: BigInt!
+  concentrationBps: BigInt!
   reason: String!
   blockNumber: BigInt!
   blockTimestamp: BigInt!
@@ -40,8 +57,11 @@ type PoolSnapshot @entity {
   lastFeeBps: BigInt
   lastVolatilityScore: BigInt
   lastConcentrationBps: BigInt
+  lastActiveTick: BigInt
   lastTickLower: BigInt
   lastTickUpper: BigInt
+  lastVaultCreditBps: BigInt
+  positionRebalanceCount: BigInt
   totalVolumeUsd: BigInt
   swapCount: BigInt
   lastReason: String

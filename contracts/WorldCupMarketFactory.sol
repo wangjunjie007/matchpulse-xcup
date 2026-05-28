@@ -2,7 +2,6 @@
 pragma solidity ^0.8.26;
 
 import {IMatchOracle} from "./interfaces/IMatchOracle.sol";
-import {MatchOracleMock} from "./MatchOracleMock.sol";
 import {PredictionToken} from "./PredictionToken.sol";
 
 contract WorldCupMarketFactory {
@@ -25,7 +24,7 @@ contract WorldCupMarketFactory {
     }
 
     address public owner;
-    MatchOracleMock public immutable oracle;
+    IMatchOracle public immutable oracle;
     mapping(bytes32 matchId => Market market) public markets;
 
     event MarketCreated(
@@ -54,7 +53,7 @@ contract WorldCupMarketFactory {
         _;
     }
 
-    constructor(MatchOracleMock matchOracle, address initialOwner) {
+    constructor(IMatchOracle matchOracle, address initialOwner) {
         oracle = matchOracle;
         owner = initialOwner == address(0) ? msg.sender : initialOwner;
     }

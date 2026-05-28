@@ -2,8 +2,10 @@
 pragma solidity ^0.8.26;
 
 import {IMatchPulseHook} from "../contracts/interfaces/IMatchPulseHook.sol";
-import {MatchOracleMock} from "../contracts/MatchOracleMock.sol";
+import {AgentExecutor} from "../contracts/AgentExecutor.sol";
+import {MatchPulseOracle} from "../contracts/MatchPulseOracle.sol";
 import {MatchPulseHook} from "../contracts/MatchPulseHook.sol";
+import {MatchPulsePaymaster} from "../contracts/MatchPulsePaymaster.sol";
 import {SimulatedPoolManager} from "../contracts/SimulatedPoolManager.sol";
 import {WorldCupMarketFactory} from "../contracts/WorldCupMarketFactory.sol";
 
@@ -24,10 +26,12 @@ contract Deploy {
 
         vm.startBroadcast(deployerKey);
 
-        MatchOracleMock oracle = new MatchOracleMock(deployer);
+        MatchPulseOracle oracle = new MatchPulseOracle(deployer, deployer);
         WorldCupMarketFactory factory = new WorldCupMarketFactory(oracle, deployer);
         MatchPulseHook hook = new MatchPulseHook(oracle, deployer);
         SimulatedPoolManager poolManager = new SimulatedPoolManager(hook);
+        new AgentExecutor();
+        new MatchPulsePaymaster(deployer);
         hook.setPoolManager(address(poolManager));
 
         oracle.createMatch(MATCH_ID, "Argentina", "Brazil", uint64(block.timestamp + 7 days));

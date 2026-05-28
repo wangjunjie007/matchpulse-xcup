@@ -15,11 +15,14 @@ contract MatchPulseHook is IMatchPulseHook {
     struct PoolMetrics {
         uint256 totalVolumeUsd;
         uint256 swapCount;
+        uint256 positionRebalanceCount;
         uint24 lastFeeBps;
         uint256 lastVolatilityScore;
         uint16 lastLiquidityConcentrationBps;
+        int24 lastActiveTick;
         int24 lastTickLower;
         int24 lastTickUpper;
+        uint256 lastVaultCreditBps;
         uint64 lastUpdated;
         string lastReason;
     }
@@ -38,8 +41,20 @@ contract MatchPulseHook is IMatchPulseHook {
         bytes32 indexed poolId,
         bytes32 indexed matchId,
         uint16 concentrationBps,
+        int24 activeTick,
         int24 tickLower,
         int24 tickUpper,
+        uint256 vaultCreditBps,
+        string reason
+    );
+    event ActiveLiquidityRebalanced(
+        bytes32 indexed poolId,
+        bytes32 indexed matchId,
+        address indexed sender,
+        int24 activeTick,
+        int24 tickLower,
+        int24 tickUpper,
+        uint16 concentrationBps,
         string reason
     );
     event PoolManagerSet(address indexed poolManager);
@@ -86,8 +101,7 @@ contract MatchPulseHook is IMatchPulseHook {
         returns (bytes4 selector, SwapReport memory report)
     {
         (uint24 feeBps, uint256 volatilityScore, string memory reason) = quoteFee(key.matchId, key.baseFeeBps);
-        (uint16 concentrationBps, int24 tickLower, int24 tickUpper, string memory liquidityReason) =
-            quoteLiquidityBand(key.matchId);
+        RebalanceReport memory rebalance = _quoteRebalance(key.matchId);
         bytes32 poolId = getPoolId(key);
         PoolMetrics storage data = poolMetrics[poolId];
 
@@ -95,25 +109,41 @@ contract MatchPulseHook is IMatchPulseHook {
         data.swapCount += 1;
         data.lastFeeBps = feeBps;
         data.lastVolatilityScore = volatilityScore;
-        data.lastLiquidityConcentrationBps = concentrationBps;
-        data.lastTickLower = tickLower;
-        data.lastTickUpper = tickUpper;
+        _storeRebalance(data, rebalance);
         data.lastUpdated = uint64(block.timestamp);
         data.lastReason = reason;
 
         report = SwapReport({
             appliedFeeBps: feeBps,
             volatilityScore: volatilityScore,
-            liquidityConcentrationBps: concentrationBps,
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            liquidityConcentrationBps: rebalance.concentrationBps,
+            tickLower: rebalance.tickLower,
+            tickUpper: rebalance.tickUpper,
             reason: reason
         });
         selector = IMatchPulseHook.afterSwap.selector;
 
         emit DynamicFeeApplied(poolId, key.matchId, feeBps, volatilityScore, reason);
-        emit LiquidityBandRebalanced(poolId, key.matchId, concentrationBps, tickLower, tickUpper, liquidityReason);
+        _emitLiquidityBand(poolId, key.matchId, rebalance);
         emit SwapMeasured(poolId, volumeUsd, data.totalVolumeUsd, data.swapCount);
+    }
+
+    function beforeModifyPosition(PoolKey calldata key, PositionContext calldata context)
+        external
+        onlyPoolManager
+        returns (bytes4 selector, RebalanceReport memory report)
+    {
+        report = _quoteRebalance(key.matchId);
+        bytes32 poolId = getPoolId(key);
+        PoolMetrics storage data = poolMetrics[poolId];
+
+        data.positionRebalanceCount += 1;
+        _storeRebalance(data, report);
+        data.lastUpdated = uint64(block.timestamp);
+        data.lastReason = report.reason;
+        selector = IMatchPulseHook.beforeModifyPosition.selector;
+
+        _emitActiveRebalance(poolId, key.matchId, context, report);
     }
 
     function quoteFee(bytes32 matchId, uint24 baseFeeBps)
@@ -167,12 +197,20 @@ contract MatchPulseHook is IMatchPulseHook {
     function quoteLiquidityBand(bytes32 matchId)
         public
         view
-        returns (uint16 concentrationBps, int24 tickLower, int24 tickUpper, string memory reason)
+        returns (
+            uint16 concentrationBps,
+            int24 activeTick,
+            int24 tickLower,
+            int24 tickUpper,
+            uint256 vaultCreditBps,
+            string memory reason
+        )
     {
         IMatchOracle.MatchState memory state = oracle.getMatch(matchId);
         uint256 concentration = 1500;
         int256 halfWidth = 2400;
         reason = "pre-match wide liquidity band";
+        activeTick = _activeTick(state);
 
         if (state.phase == IMatchOracle.Phase.HalfTime) {
             concentration = 2600;
@@ -221,8 +259,67 @@ contract MatchPulseHook is IMatchPulseHook {
         if (halfWidth < MIN_BAND_HALF_WIDTH) halfWidth = MIN_BAND_HALF_WIDTH;
 
         concentrationBps = uint16(concentration);
-        tickLower = int24(-halfWidth);
-        tickUpper = int24(halfWidth);
+        tickLower = activeTick - int24(halfWidth);
+        tickUpper = activeTick + int24(halfWidth);
+        vaultCreditBps = concentration * 60 / 10_000;
+    }
+
+    function _quoteRebalance(bytes32 matchId) private view returns (RebalanceReport memory report) {
+        (
+            uint16 concentrationBps,
+            int24 activeTick,
+            int24 tickLower,
+            int24 tickUpper,
+            uint256 vaultCreditBps,
+            string memory reason
+        ) = quoteLiquidityBand(matchId);
+        report = RebalanceReport({
+            concentrationBps: concentrationBps,
+            activeTick: activeTick,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            vaultCreditBps: vaultCreditBps,
+            reason: reason
+        });
+    }
+
+    function _storeRebalance(PoolMetrics storage data, RebalanceReport memory report) private {
+        data.lastLiquidityConcentrationBps = report.concentrationBps;
+        data.lastActiveTick = report.activeTick;
+        data.lastTickLower = report.tickLower;
+        data.lastTickUpper = report.tickUpper;
+        data.lastVaultCreditBps = report.vaultCreditBps;
+    }
+
+    function _emitLiquidityBand(bytes32 poolId, bytes32 matchId, RebalanceReport memory report) private {
+        emit LiquidityBandRebalanced(
+            poolId,
+            matchId,
+            report.concentrationBps,
+            report.activeTick,
+            report.tickLower,
+            report.tickUpper,
+            report.vaultCreditBps,
+            report.reason
+        );
+    }
+
+    function _emitActiveRebalance(
+        bytes32 poolId,
+        bytes32 matchId,
+        PositionContext calldata context,
+        RebalanceReport memory report
+    ) private {
+        emit ActiveLiquidityRebalanced(
+            poolId,
+            matchId,
+            context.sender,
+            report.activeTick,
+            report.tickLower,
+            report.tickUpper,
+            report.concentrationBps,
+            report.reason
+        );
     }
 
     function getPoolId(PoolKey memory key) public pure returns (bytes32) {
@@ -238,5 +335,18 @@ contract MatchPulseHook is IMatchPulseHook {
         uint8 home = state.homeScore;
         uint8 away = state.awayScore;
         return home == away || home + 1 == away || away + 1 == home;
+    }
+
+    function _activeTick(IMatchOracle.MatchState memory state) private pure returns (int24) {
+        int256 scoreDelta = int256(uint256(state.homeScore)) - int256(uint256(state.awayScore));
+        int256 tick = scoreDelta * 180;
+
+        if (state.upsetSignal) tick -= 90;
+        if (state.redCards > 0) tick += scoreDelta >= 0 ? -60 : int256(uint256(state.redCards)) * int256(60);
+        if (state.phase == IMatchOracle.Phase.Finalized) tick = scoreDelta * 360;
+
+        if (tick > type(int24).max) return type(int24).max;
+        if (tick < type(int24).min) return type(int24).min;
+        return int24(tick);
     }
 }

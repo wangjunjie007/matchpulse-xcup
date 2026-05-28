@@ -26,6 +26,23 @@ interface IMatchPulseHook {
         string reason;
     }
 
+    struct PositionContext {
+        address sender;
+        int24 requestedTickLower;
+        int24 requestedTickUpper;
+        int128 liquidityDelta;
+        bytes hookData;
+    }
+
+    struct RebalanceReport {
+        uint16 concentrationBps;
+        int24 activeTick;
+        int24 tickLower;
+        int24 tickUpper;
+        uint256 vaultCreditBps;
+        string reason;
+    }
+
     function beforeSwap(PoolKey calldata key, SwapContext calldata context)
         external
         returns (bytes4 selector, uint24 appliedFeeBps);
@@ -33,4 +50,8 @@ interface IMatchPulseHook {
     function afterSwap(PoolKey calldata key, SwapContext calldata context, uint256 volumeUsd)
         external
         returns (bytes4 selector, SwapReport memory report);
+
+    function beforeModifyPosition(PoolKey calldata key, PositionContext calldata context)
+        external
+        returns (bytes4 selector, RebalanceReport memory report);
 }

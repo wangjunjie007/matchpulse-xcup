@@ -25,6 +25,18 @@ contract SimulatedPoolManager {
         int24 tickUpper,
         string reason
     );
+    event PositionModified(
+        bytes32 indexed poolId,
+        address indexed sender,
+        int24 requestedTickLower,
+        int24 requestedTickUpper,
+        int24 activeTick,
+        int24 tickLower,
+        int24 tickUpper,
+        uint16 liquidityConcentrationBps,
+        uint256 vaultCreditBps,
+        string reason
+    );
 
     error PoolExists();
     error UnknownPool();
@@ -77,6 +89,59 @@ contract SimulatedPoolManager {
         );
 
         return (report.appliedFeeBps, report.volatilityScore, report.reason);
+    }
+
+    function simulateModifyPosition(
+        bytes32 poolId,
+        int24 requestedTickLower,
+        int24 requestedTickUpper,
+        int128 liquidityDelta
+    )
+        external
+        returns (
+            uint16 concentrationBps,
+            int24 activeTick,
+            int24 tickLower,
+            int24 tickUpper,
+            string memory reason
+        )
+    {
+        Pool storage pool = pools[poolId];
+        if (!pool.exists) revert UnknownPool();
+
+        IMatchPulseHook.PositionContext memory context = IMatchPulseHook.PositionContext({
+            sender: msg.sender,
+            requestedTickLower: requestedTickLower,
+            requestedTickUpper: requestedTickUpper,
+            liquidityDelta: liquidityDelta,
+            hookData: ""
+        });
+
+        bytes4 selector;
+        IMatchPulseHook.RebalanceReport memory report;
+        (selector, report) = hook.beforeModifyPosition(pool.key, context);
+        if (selector != IMatchPulseHook.beforeModifyPosition.selector) revert HookRejected();
+
+        emit PositionModified(
+            poolId,
+            msg.sender,
+            requestedTickLower,
+            requestedTickUpper,
+            report.activeTick,
+            report.tickLower,
+            report.tickUpper,
+            report.concentrationBps,
+            report.vaultCreditBps,
+            report.reason
+        );
+
+        return (
+            report.concentrationBps,
+            report.activeTick,
+            report.tickLower,
+            report.tickUpper,
+            report.reason
+        );
     }
 
     function getPoolId(IMatchPulseHook.PoolKey memory key) public pure returns (bytes32) {

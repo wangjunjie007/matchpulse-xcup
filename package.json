@@ -9,9 +9,11 @@
     "preview": "vite preview --host 127.0.0.1",
     "validate:deployment": "node tools/validate-deployment.mjs",
     "test:contracts": "forge test -vvv",
+    "test:stress": "forge test --match-contract AgentSessionStress -vvv",
     "test": "npm run validate:deployment && npm run test:contracts && npm run build"
   },
   "dependencies": {
+    "@okxconnect/ui": "^1.9.1",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",

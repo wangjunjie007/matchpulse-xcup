@@ -19,8 +19,25 @@
       { "name": "poolId", "type": "bytes32", "indexed": true },
       { "name": "matchId", "type": "bytes32", "indexed": true },
       { "name": "concentrationBps", "type": "uint16", "indexed": false },
+      { "name": "activeTick", "type": "int24", "indexed": false },
       { "name": "tickLower", "type": "int24", "indexed": false },
       { "name": "tickUpper", "type": "int24", "indexed": false },
+      { "name": "vaultCreditBps", "type": "uint256", "indexed": false },
+      { "name": "reason", "type": "string", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ActiveLiquidityRebalanced",
+    "anonymous": false,
+    "inputs": [
+      { "name": "poolId", "type": "bytes32", "indexed": true },
+      { "name": "matchId", "type": "bytes32", "indexed": true },
+      { "name": "sender", "type": "address", "indexed": true },
+      { "name": "activeTick", "type": "int24", "indexed": false },
+      { "name": "tickLower", "type": "int24", "indexed": false },
+      { "name": "tickUpper", "type": "int24", "indexed": false },
+      { "name": "concentrationBps", "type": "uint16", "indexed": false },
       { "name": "reason", "type": "string", "indexed": false }
     ]
   },

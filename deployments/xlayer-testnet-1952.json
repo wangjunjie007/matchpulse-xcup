@@ -4,29 +4,35 @@
   "rpcUrl": "https://testrpc.xlayer.tech/terigon",
   "deployer": "0x810958f166D388a19Aab9C145269954671C789b6",
   "matchId": "0xe3e84d73353db6ea0d3611f8ec51960d5b0e4355bb9b3d658156a3090882e479",
-  "poolId": "0x9eee0bb67a6659cc2491b2f977131444726c8e602b05344b272d85e1ac6db01e",
+  "poolId": "0xc424c82650d041cc4977797800beddd2fc8c0f999a463ee2ecddce8eb13dcf15",
   "contracts": {
-    "MatchOracleMock": "0xfEbDF3940b697eFa77B7163BC9ff3a0F30053dB4",
-    "WorldCupMarketFactory": "0xf47AFa05191946cC5Ef2C0DA5a90b6B01ea7c121",
-    "MatchPulseHook": "0x035983729d43e55A7E306C9cbE4c728262e3fE3e",
-    "SimulatedPoolManager": "0x8AAf7914Cc6AAA2DB882024a6c61a580A7c50c1b"
+    "MatchOracleMock": "0x76f5A4F0Ca59f1ce183e87F7Df1E6bc5609adD25",
+    "MatchPulseOracle": "0x76f5A4F0Ca59f1ce183e87F7Df1E6bc5609adD25",
+    "WorldCupMarketFactory": "0x186226e6057bbA043D765d8427f80Bc5D633E167",
+    "MatchPulseHook": "0xcD2c3598A23B27E17107f0dCe61B29eE20eEbCAE",
+    "SimulatedPoolManager": "0xF17e874e55d0fFEd5928625911Ab7175A6248c40",
+    "AgentExecutor": "0xFf76612d0B15f9ff8147eff8E424a25BFa12160c",
+    "MatchPulsePaymaster": "0x75867841b5E85675089876D1AC7A585366f38748"
   },
   "predictionTokens": {
-    "Argentina": "0x7B147331Ea313bf3B01f521b34bC5600aDd8cf96",
-    "Draw": "0x7C852736C253D7Be0B0914eF1428eA3EF8B652D4",
-    "Brazil": "0x2f57B338dAcEd5F200fb4033BB0350dc1598edF2"
+    "Argentina": "0x951451867D8f0A95316ff055C9488A43133C7E1F",
+    "Draw": "0x5A3d814D90961D0382D1e77E1cF0cbbC4B5d0D3F",
+    "Brazil": "0x9a40bc258D507569dA7f8979238Bd98464A0dccA"
   },
   "transactions": {
-    "deployMatchOracleMock": "0xb0c1d029548b2afaf6beb61e7c26e897688e42d1baf2afe0d5785f5a37febac2",
-    "deployWorldCupMarketFactory": "0xf86dd30c5e1781878b0685e263b4465445d537589ffefd1881647d4f875c7f4f",
-    "deployMatchPulseHook": "0xc9a61abb016519b1f0e336c6e32524f25c533cb22d63bd43fc3d9c9115f5ea63",
-    "deploySimulatedPoolManager": "0x761bbaab0e4a741c06032b1277b1bf9abea7acbc5122f12fa006762002ed120a",
-    "setPoolManager": "0x453568e2dc61f33f032e662106d88a8d622853a6f5f401f31530615eb419f1d8",
-    "createMatch": "0x4c52ce5af35f92282bd1ae4363ece72ef5a5778a40e785516cc74399b48f82f0",
-    "createMarket": "0x16472f87d0da757623a387964099de1a8d4c2d420526cdb8ff2f0df82d7d623a",
-    "createPool": "0x31682c7200465d777d2bc6262474af32e15cf9e682cc829b449befaaa8f7388a",
-    "verifiedSimulatedSwap": "0xd882d17599427cab90c1becbe8b56683eb53f4eb868d45d56e15cb1e69302a72",
-    "updateMatchLatePressure": "0x88240e6bec2f5302054000ee879c462e3484b365b6237819a88b3326a6dcf409"
+    "deployMatchPulseOracle": "0x5aeee50928d79c017f4dd4308e77510f15db39f351354800a68edd77564661ed",
+    "deployWorldCupMarketFactory": "0x538a5ee156e0a512bcb16e82143b419fb0d1cd3a67cb835106d1aa1ed4355b32",
+    "deployMatchPulseHook": "0xdb12f78689dcb3b2a08a4ee325d5b04cf0dfbb39133cccb8cba5c7116bbae615",
+    "deploySimulatedPoolManager": "0xf9d58b10c7d2621765fc5546fed1d63f27045b9ae0395615fe9727276be23c66",
+    "deployAgentExecutor": "0x1d083be501d6175ea426262bf09007262407a6f4642334f79b0adbb613bc9a29",
+    "deployMatchPulsePaymaster": "0x76c99066a08b6f4460cc4ef33d4330ead218e32e295ac4682a973316115e731b",
+    "setPoolManager": "0xbc2d9a355617d45d8c044086220c4b7c75db1a84cc31da013a8cd7255234e2c5",
+    "createMatch": "0x54fc34be2c5d9dcf525b290fdf65b00d75c1356ad2c39cd39d68e56f9b69efce",
+    "createMarket": "0x2b66913ccb2d304cef577fd0afbfec5f14adda705b137039e4724f1924ab4ebc",
+    "createPool": "0x831f6172b5792348c9a5ffad745c9443e27d45cfcc7651ff2a1c01660bb29308",
+    "verifiedSimulatedSwap": "0x6e4acadc0fee94e0201de88b3d8fb5c5b40db20787199d642438ba2becf0d425",
+    "updateMatchSignedOracle": "0x790f69b35a41c2b716ab6d4be7f0098bfa7de156ac97cd51cc981c243632bec1",
+    "verifiedActiveLiquidityRebalance": "0x496c61c1f31a1545270274c330b4846ba968fa90e37307a96c30f4384c0ce6c5"
   },
   "explorer": "https://www.okx.com/web3/explorer/xlayer-test"
 }

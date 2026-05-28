@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Tooltip from "@radix-ui/react-tooltip";
+import { OKXUniversalConnectUI, THEME } from "@okxconnect/ui";
 import {
   Activity,
   ArrowUpRight,
@@ -31,6 +32,7 @@ import {
   Trophy,
   Users,
   Wallet,
+  Wand2,
   X,
   Zap
 } from "lucide-react";
@@ -115,11 +117,26 @@ type ExperienceMode = "fan" | "pro";
 type PoolMetricsState = {
   totalVolumeUsd: string;
   swapCount: string;
+  positionRebalanceCount: string;
   lastFeeBps: string;
   lastLiquidityConcentrationBps: string;
+  lastActiveTick: string;
   lastTickLower: string;
   lastTickUpper: string;
+  lastVaultCreditBps: string;
   lastReason: string;
+};
+
+type IntentState = {
+  sessionKey: HexAddress | null;
+  vault: string;
+  maxSpend: string;
+  validUntil: string;
+  signature: HexValue | null;
+};
+
+type OkxConnectSession = {
+  namespaces?: Record<string, { accounts?: string[]; chains?: string[]; defaultChain?: string }>;
 };
 
 type MarketState = {
@@ -138,7 +155,7 @@ type EthereumProvider = {
 declare global {
   interface Window {
     ethereum?: EthereumProvider;
-    okxwallet?: EthereumProvider | { ethereum?: EthereumProvider };
+    okxwallet?: any;
     web3?: { currentProvider?: EthereumProvider };
   }
 }
@@ -203,16 +220,34 @@ const factoryAbi = [
 const oracleAbi = [
   {
     type: "function",
-    name: "updateMatch",
+    name: "nonces",
+    stateMutability: "view",
+    inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: [{ name: "nonce", type: "uint256" }]
+  },
+  {
+    type: "function",
+    name: "updateMatchState",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "matchId", type: "bytes32" },
-      { name: "phase", type: "uint8" },
-      { name: "minute", type: "uint8" },
-      { name: "homeScore", type: "uint8" },
-      { name: "awayScore", type: "uint8" },
-      { name: "redCards", type: "uint8" },
-      { name: "upsetSignal", type: "bool" }
+      {
+        name: "update",
+        type: "tuple",
+        components: [
+          { name: "matchId", type: "bytes32" },
+          { name: "phase", type: "uint8" },
+          { name: "minute", type: "uint8" },
+          { name: "homeScore", type: "uint8" },
+          { name: "awayScore", type: "uint8" },
+          { name: "redCards", type: "uint8" },
+          { name: "upsetSignal", type: "bool" },
+          { name: "observedAt", type: "uint64" },
+          { name: "deadline", type: "uint64" },
+          { name: "nonce", type: "uint256" },
+          { name: "evidenceHash", type: "bytes32" }
+        ]
+      },
+      { name: "signature", type: "bytes" }
     ],
     outputs: []
   }
@@ -241,13 +276,30 @@ const hookAbi = [
     outputs: [
       { name: "totalVolumeUsd", type: "uint256" },
       { name: "swapCount", type: "uint256" },
+      { name: "positionRebalanceCount", type: "uint256" },
       { name: "lastFeeBps", type: "uint24" },
       { name: "lastVolatilityScore", type: "uint256" },
       { name: "lastLiquidityConcentrationBps", type: "uint16" },
+      { name: "lastActiveTick", type: "int24" },
       { name: "lastTickLower", type: "int24" },
       { name: "lastTickUpper", type: "int24" },
+      { name: "lastVaultCreditBps", type: "uint256" },
       { name: "lastUpdated", type: "uint64" },
       { name: "lastReason", type: "string" }
+    ]
+  },
+  {
+    type: "function",
+    name: "quoteLiquidityBand",
+    stateMutability: "view",
+    inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: [
+      { name: "concentrationBps", type: "uint16" },
+      { name: "activeTick", type: "int24" },
+      { name: "tickLower", type: "int24" },
+      { name: "tickUpper", type: "int24" },
+      { name: "vaultCreditBps", type: "uint256" },
+      { name: "reason", type: "string" }
     ]
   }
 ] as const;
@@ -268,6 +320,24 @@ const poolManagerAbi = [
       { name: "volatilityScore", type: "uint256" },
       { name: "reason", type: "string" }
     ]
+  },
+  {
+    type: "function",
+    name: "simulateModifyPosition",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "poolId", type: "bytes32" },
+      { name: "requestedTickLower", type: "int24" },
+      { name: "requestedTickUpper", type: "int24" },
+      { name: "liquidityDelta", type: "int128" }
+    ],
+    outputs: [
+      { name: "concentrationBps", type: "uint16" },
+      { name: "activeTick", type: "int24" },
+      { name: "tickLower", type: "int24" },
+      { name: "tickUpper", type: "int24" },
+      { name: "reason", type: "string" }
+    ]
   }
 ] as const;
 
@@ -284,6 +354,8 @@ const erc20Abi = [
 const mintValueEth = "0.001";
 const poolId = deployment.poolId as HexValue;
 const simulationIntervalMs = 2_400;
+const okxConnectChain = `eip155:${deployment.chainId}`;
+let okxConnectUiPromise: Promise<OKXUniversalConnectUI> | null = null;
 const publicClient = createPublicClient({
   chain: xLayerTestnet,
   transport: http(deployment.rpcUrl)
@@ -302,6 +374,29 @@ const copy = {
     fanModeNote: "隐藏 Hook、Gas、流动性等术语，用球迷能理解的动作描述链上交互。",
     liveControls: "X Layer 链上控制",
     connectAndWrite: "连接钱包并写入测试网",
+    okxNative: "OKX 原生入口",
+    okxNativeNote: "优先使用 OKX DApp 浏览器注入钱包；未注入时使用 OKX Connect 弹窗/扫码。",
+    mobileIntent: "移动端意图执行",
+    aiCustody: "激活 AI 托管",
+    sessionKey: "会话密钥",
+    sessionReady: "已授权",
+    sessionPending: "待授权",
+    maxSpend: "单场上限",
+    validWindow: "有效期",
+    signSession: "签署 AI 会话授权",
+    sessionSigned: "AI 会话授权已签署",
+    agentExecutor: "AgentExecutor",
+    paymaster: "Paymaster",
+    gasAbstracted: "代币支付 Gas",
+    gasAbstractedNote: "生产版由 Paymaster 用预测资产计价并代付底层 OKB；当前前端展示合约接口和风控路径。",
+    rebalanceLiquidity: "主动重调流动性",
+    rebalanceLiquidityPro: "beforeModifyPosition 重调",
+    rebalanceSubmitted: "流动性重调已提交",
+    activeTick: "现价 Tick",
+    positionRebalances: "重调次数",
+    vaultCredit: "Vault 记账返点",
+    oracleSigned: "EIP-712 体育预言机",
+    oracleSignedNote: "新 MatchPulseOracle 使用可信签名者验证 matchId、比分、时间戳、nonce 和 evidenceHash。",
     stadiumSignal: "国际足球杯赛 · 夜场",
     broadcastMode: "实时比赛信号",
     liveMinute: "比赛时间",
@@ -397,7 +492,7 @@ const copy = {
     hookTestSubmitted: "链上 Hook 测试交易已提交",
     settlementPanel: "Testnet 结算闭环",
     finalOracleWrite: "写入终场比分",
-    finalOracleNote: "owner 钱包可调用 MatchOracleMock.updateMatch，把测试网比赛置为 2-1 终场。",
+    finalOracleNote: "可信 signer 钱包会先签署 EIP-712 比分载荷，再调用 MatchPulseOracle.updateMatchState，把测试网比赛置为 2-1 终场。",
     settleMarket: "结算市场",
     redeemWinner: "赎回赢家 Token",
     settlementSubmitted: "结算交易已提交",
@@ -427,7 +522,7 @@ const copy = {
     whyItMatters: "为什么重要",
     whyText: "体育预测市场会在进球、红牌、点球和终场前反转时遭遇极高波动。MatchPulse 把这些信号放进 Hook 层，动态提高交易成本，降低 LP 被 toxic flow 冲击的风险。",
     validation: "验证结果",
-    validationText: "合约测试 4/4 通过，新增 TWCL 流动性收敛断言；配置校验脚本检查 chainId/地址/bytes32/交易哈希类型，前端构建通过，X Layer testnet 合约已部署，GitHub Pages 可公开访问。",
+    validationText: "合约测试覆盖 Hook 主动流动性重调、EIP-712 Oracle、Session Key 执行器、Paymaster 计价、市场结算和前端构建；配置校验脚本检查 chainId/地址/bytes32/交易哈希类型。",
     phase: {
       Scheduled: "赛前",
       LiveFirstHalf: "上半场直播",
@@ -475,6 +570,29 @@ const copy = {
     fanModeNote: "Hides Hook, gas, and liquidity jargon behind fan-readable actions.",
     liveControls: "Live X Layer controls",
     connectAndWrite: "Connect wallet and write to testnet",
+    okxNative: "OKX native entry",
+    okxNativeNote: "Prefer the injected OKX DApp-browser wallet; fall back to OKX Connect modal / QR when injection is unavailable.",
+    mobileIntent: "Mobile intent execution",
+    aiCustody: "Activate AI custody",
+    sessionKey: "Session key",
+    sessionReady: "Authorized",
+    sessionPending: "Pending",
+    maxSpend: "Match cap",
+    validWindow: "Valid window",
+    signSession: "Sign AI session authorization",
+    sessionSigned: "AI session authorization signed",
+    agentExecutor: "AgentExecutor",
+    paymaster: "Paymaster",
+    gasAbstracted: "Token-paid gas",
+    gasAbstractedNote: "Production Paymaster prices gas in prediction assets and sponsors underlying OKB; this frontend exposes the contract and risk-control path.",
+    rebalanceLiquidity: "Rebalance liquidity",
+    rebalanceLiquidityPro: "beforeModifyPosition rebalance",
+    rebalanceSubmitted: "Liquidity rebalance submitted",
+    activeTick: "Active tick",
+    positionRebalances: "Rebalances",
+    vaultCredit: "Vault credit",
+    oracleSigned: "EIP-712 sports oracle",
+    oracleSignedNote: "The new MatchPulseOracle verifies matchId, score, timestamp, nonce, and evidenceHash from trusted signers.",
     stadiumSignal: "International football cup · Night match",
     broadcastMode: "Live match signal",
     liveMinute: "Match clock",
@@ -570,7 +688,7 @@ const copy = {
     hookTestSubmitted: "On-chain Hook test submitted",
     settlementPanel: "Testnet settlement loop",
     finalOracleWrite: "Write final score",
-    finalOracleNote: "Owner wallet can call MatchOracleMock.updateMatch to finalize the testnet match at 2-1.",
+    finalOracleNote: "A trusted signer first signs an EIP-712 score payload, then calls MatchPulseOracle.updateMatchState to finalize the testnet match at 2-1.",
     settleMarket: "Settle market",
     redeemWinner: "Redeem winner tokens",
     settlementSubmitted: "Settlement submitted",
@@ -600,7 +718,7 @@ const copy = {
     whyItMatters: "Why it matters",
     whyText: "Sports prediction markets face extreme volatility during goals, red cards, penalties and late reversals. MatchPulse moves those signals into the Hook layer to reduce LP exposure to toxic flow.",
     validation: "Validation",
-    validationText: "Contract tests pass 4/4 with TWCL convergence assertions, the config validator checks numeric chainId plus address / bytes32 / tx-hash formats, frontend build passes, X Layer testnet contracts are deployed, and GitHub Pages is publicly accessible.",
+    validationText: "Contract tests cover active Hook liquidity rebalancing, EIP-712 Oracle updates, Session Key execution, Paymaster pricing, market settlement, and frontend build; the config validator checks numeric chainId plus address / bytes32 / tx-hash formats.",
     phase: {
       Scheduled: "Scheduled",
       LiveFirstHalf: "Live First Half",
@@ -750,8 +868,8 @@ const oracleSignals: OracleSignal[] = [
   {
     label: { zh: "链上提交", en: "On-chain commit" },
     detail: {
-      zh: "Oracle 结果进入 MatchOracleMock.updateMatch，再驱动 Factory settle/redeem 闭环。",
-      en: "Oracle result flows into MatchOracleMock.updateMatch, then drives Factory settlement and redemption."
+      zh: "Oracle 结果进入 MatchPulseOracle.updateMatchState，再驱动 Factory settle/redeem 闭环。",
+      en: "Oracle result flows into MatchPulseOracle.updateMatchState, then drives Factory settlement and redemption."
     },
     confidence: 100,
     source: { zh: "已部署: X Layer testnet", en: "Deployed: X Layer testnet" }
@@ -824,6 +942,7 @@ function App() {
   const [txHash, setTxHash] = useState<HexValue | null>(null);
   const [hookTxHash, setHookTxHash] = useState<HexValue | null>(null);
   const [settlementTxHash, setSettlementTxHash] = useState<HexValue | null>(null);
+  const [rebalanceTxHash, setRebalanceTxHash] = useState<HexValue | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [chainQuote, setChainQuote] = useState<ChainQuote>({ feeBps: 30, volatilityScore: 0, reason: "scheduled baseline", source: "local" });
@@ -831,10 +950,13 @@ function App() {
   const [poolMetricsState, setPoolMetricsState] = useState<PoolMetricsState>({
     totalVolumeUsd: "--",
     swapCount: "--",
+    positionRebalanceCount: "--",
     lastFeeBps: "--",
     lastLiquidityConcentrationBps: "--",
+    lastActiveTick: "--",
     lastTickLower: "--",
     lastTickUpper: "--",
+    lastVaultCreditBps: "--",
     lastReason: "--"
   });
   const [marketState, setMarketState] = useState<MarketState>({
@@ -846,6 +968,13 @@ function App() {
   const [chainReadBusy, setChainReadBusy] = useState(false);
   const [logs, setLogs] = useState<EventLog[]>(initialLogs("zh"));
   const [socialMode, setSocialMode] = useState<SocialMode>("farcaster");
+  const [intentState, setIntentState] = useState<IntentState>({
+    sessionKey: null,
+    vault: agentVaults[1].name.zh,
+    maxSpend: "25 OKB",
+    validUntil: "90 min",
+    signature: null
+  });
 
   const t = copy[language];
   const match = dynamicMatch;
@@ -1052,11 +1181,14 @@ function App() {
       setPoolMetricsState({
         totalVolumeUsd: metrics[0].toString(),
         swapCount: metrics[1].toString(),
-        lastFeeBps: metrics[2].toString(),
-        lastLiquidityConcentrationBps: metrics[4].toString(),
-        lastTickLower: metrics[5].toString(),
-        lastTickUpper: metrics[6].toString(),
-        lastReason: metrics[8] || "--"
+        positionRebalanceCount: metrics[2].toString(),
+        lastFeeBps: metrics[3].toString(),
+        lastLiquidityConcentrationBps: metrics[5].toString(),
+        lastActiveTick: metrics[6].toString(),
+        lastTickLower: metrics[7].toString(),
+        lastTickUpper: metrics[8].toString(),
+        lastVaultCreditBps: metrics[9].toString(),
+        lastReason: metrics[11] || "--"
       });
       setMarketState({
         totalCollateral: formatEther(market[4]),
@@ -1111,6 +1243,8 @@ function App() {
     setWalletError(null);
     const provider = getWalletProvider();
     if (!provider) {
+      const connected = await connectWithOkxConnect();
+      if (connected) return;
       setWalletError(t.noWallet);
       toast.error(t.noWallet);
       return;
@@ -1169,6 +1303,87 @@ function App() {
         setWalletError(message);
         toast.error(message, { id });
       }
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function connectWithOkxConnect() {
+    setWalletBusy(true);
+    const id = toast.loading(t.okxNative);
+    try {
+      const ui = await getOkxConnectUi(language);
+      const session = (await ui.openModal({
+        namespaces: {
+          eip155: {
+            chains: [okxConnectChain],
+            defaultChain: String(deployment.chainId),
+            rpcMap: {
+              [String(deployment.chainId)]: deployment.rpcUrl
+            }
+          }
+        }
+      })) as OkxConnectSession | undefined;
+      const account = session?.namespaces?.eip155?.accounts?.[0]?.split(":").pop();
+      if (!account) throw new Error(language === "zh" ? "OKX Connect 未返回 EVM 地址。" : "OKX Connect did not return an EVM address.");
+      setWalletAddress(account as HexAddress);
+      setWalletChainId(deployment.chainId);
+      await refreshTokenBalances(account as HexAddress);
+      toast.success(t.connected, { id, description: shortHash(account) });
+      return true;
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
+      return false;
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function signAiSessionIntent() {
+    setWalletError(null);
+    const provider = getWalletProvider();
+    if (!provider) {
+      toast.error(t.noWallet);
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    setWalletBusy(true);
+    const id = toast.loading(t.signSession);
+    try {
+      const sessionKey = deterministicSessionKey(walletAddress, selectedOutcome, simPulse);
+      const message =
+        language === "zh"
+          ? `MatchPulse AI 会话授权\n比赛: ARG-BRA\n策略: ${intentState.vault}\n上限: ${intentState.maxSpend}\n有效期: ${intentState.validUntil}\nSession Key: ${sessionKey}\n链: X Layer testnet`
+          : `MatchPulse AI Session Authorization\nMatch: ARG-BRA\nStrategy: ${intentState.vault}\nCap: ${intentState.maxSpend}\nWindow: ${intentState.validUntil}\nSession Key: ${sessionKey}\nChain: X Layer testnet`;
+      const signature = (await provider.request({
+        method: "personal_sign",
+        params: [stringToHex(message), walletAddress]
+      })) as HexValue;
+      setIntentState((current) => ({ ...current, sessionKey, signature }));
+      toast.success(t.sessionSigned, { id, description: shortHash(signature) });
+      setLogs((current) =>
+        [
+          {
+            id: Date.now(),
+            label: t.aiCustody,
+            detail:
+              language === "zh"
+                ? `Session Key ${shortHash(sessionKey)} 已进入 AgentExecutor 风控队列。`
+                : `Session Key ${shortHash(sessionKey)} entered the AgentExecutor risk queue.`,
+            tone: "ok" as const
+          },
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
     } finally {
       setWalletBusy(false);
     }
@@ -1289,6 +1504,62 @@ function App() {
     }
   }
 
+  async function rebalanceLiquidityOnChain() {
+    setWalletError(null);
+    setRebalanceTxHash(null);
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError(t.noWallet);
+      toast.error(t.noWallet);
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    if (walletChainId !== deployment.chainId) {
+      await switchToXLayer();
+      return;
+    }
+
+    setWalletBusy(true);
+    const id = toast.loading(t.rebalanceLiquidity);
+    try {
+      const client = createWalletClient({
+        account: walletAddress,
+        chain: xLayerTestnet,
+        transport: custom(provider)
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.SimulatedPoolManager as HexAddress,
+        abi: poolManagerAbi,
+        functionName: "simulateModifyPosition",
+        args: [poolId, -2400, 2400, BigInt(10_000)]
+      });
+      setRebalanceTxHash(hash);
+      toast.success(t.rebalanceSubmitted, { id, description: shortHash(hash) });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refreshChainData();
+      setLogs((current) =>
+        [
+          {
+            id: Date.now(),
+            label: t.rebalanceLiquidity,
+            detail: `${t.rebalanceSubmitted}: ${shortHash(hash)}.`,
+            tone: "ok" as const
+          },
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
   async function writeFinalScoreOnChain() {
     setWalletError(null);
     setSettlementTxHash(null);
@@ -1315,11 +1586,57 @@ function App() {
         chain: xLayerTestnet,
         transport: custom(provider)
       });
-      const hash = await client.writeContract({
-        address: deployment.contracts.MatchOracleMock as HexAddress,
+      const nonce = await publicClient.readContract({
+        address: deployment.contracts.MatchPulseOracle as HexAddress,
         abi: oracleAbi,
-        functionName: "updateMatch",
-        args: [deployment.matchId as HexValue, 6, 95, 2, 1, 0, false]
+        functionName: "nonces",
+        args: [deployment.matchId as HexValue]
+      });
+      const now = Math.floor(Date.now() / 1000);
+      const update = {
+        matchId: deployment.matchId as HexValue,
+        phase: 6,
+        minute: 95,
+        homeScore: 2,
+        awayScore: 1,
+        redCards: 0,
+        upsetSignal: false,
+        observedAt: BigInt(now),
+        deadline: BigInt(now + 600),
+        nonce,
+        evidenceHash: "0x9f9b4bc50d1c79a11a42d9d99e18f3cd3447b12603dbe2e73a038ef31e2b2f71" as HexValue
+      };
+      const signature = await client.signTypedData({
+        account: walletAddress,
+        domain: {
+          name: "MatchPulseOracle",
+          version: "1",
+          chainId: deployment.chainId,
+          verifyingContract: deployment.contracts.MatchPulseOracle as HexAddress
+        },
+        types: {
+          MatchStateUpdate: [
+            { name: "matchId", type: "bytes32" },
+            { name: "phase", type: "uint8" },
+            { name: "minute", type: "uint8" },
+            { name: "homeScore", type: "uint8" },
+            { name: "awayScore", type: "uint8" },
+            { name: "redCards", type: "uint8" },
+            { name: "upsetSignal", type: "bool" },
+            { name: "observedAt", type: "uint64" },
+            { name: "deadline", type: "uint64" },
+            { name: "nonce", type: "uint256" },
+            { name: "evidenceHash", type: "bytes32" }
+          ]
+        },
+        primaryType: "MatchStateUpdate",
+        message: update
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.MatchPulseOracle as HexAddress,
+        abi: oracleAbi,
+        functionName: "updateMatchState",
+        args: [update, signature]
       });
       setSettlementTxHash(hash);
       toast.success(t.oracleSubmitted, { id, description: shortHash(hash) });
@@ -1594,6 +1911,28 @@ function App() {
               </TipButton>
             </div>
           </div>
+
+          <div className="intentRail">
+            <div className="intentCard">
+              <span>{t.okxNative}</span>
+              <strong>{providerName || "OKX Connect"}</strong>
+              <small>{t.okxNativeNote}</small>
+            </div>
+            <div className="intentCard">
+              <span>{t.sessionKey}</span>
+              <strong>{intentState.signature ? t.sessionReady : t.sessionPending}</strong>
+              <small>{intentState.sessionKey ? shortHash(intentState.sessionKey) : `${t.maxSpend}: ${intentState.maxSpend}`}</small>
+            </div>
+            <div className="intentCard">
+              <span>{t.gasAbstracted}</span>
+              <strong>{contractAddress("MatchPulsePaymaster") ? shortHash(contractAddress("MatchPulsePaymaster")) : "Paymaster"}</strong>
+              <small>{t.gasAbstractedNote}</small>
+            </div>
+            <button type="button" className="intentButton" onClick={signAiSessionIntent} disabled={walletBusy}>
+              <Wand2 size={17} />
+              {t.signSession}
+            </button>
+          </div>
         </motion.section>
 
         <Tabs.Root defaultValue="market" className="workspaceTabs">
@@ -1845,6 +2184,10 @@ function App() {
                   <Activity size={17} />
                   {chainHookTestLabel}
                 </button>
+                <button type="button" className="secondaryButton fullWidth" onClick={rebalanceLiquidityOnChain} disabled={walletBusy}>
+                  <Network size={17} />
+                  {fanMode ? t.rebalanceLiquidity : t.rebalanceLiquidityPro}
+                </button>
                 <button type="button" className="secondaryButton fullWidth" onClick={refreshChainData} disabled={chainReadBusy}>
                   <RefreshCw size={17} />
                   {chainReadBusy ? t.waiting : t.refreshChainData}
@@ -1859,6 +2202,11 @@ function App() {
                 {hookTxHash ? (
                   <a className="txLink" href={`${explorerBase}/tx/${hookTxHash}`} target="_blank" rel="noreferrer">
                     {t.chainHookTest} <ExternalLink size={14} />
+                  </a>
+                ) : null}
+                {rebalanceTxHash ? (
+                  <a className="txLink" href={`${explorerBase}/tx/${rebalanceTxHash}`} target="_blank" rel="noreferrer">
+                    {t.rebalanceLiquidity} <ExternalLink size={14} />
                   </a>
                 ) : null}
               </section>
@@ -1877,6 +2225,7 @@ function App() {
                 <PanelTitle icon={<BarChart3 size={18} />} label={t.lastPoolMetrics} />
                 <div className="walletStatus">
                   <StatTile label={t.swapCount} value={poolMetricsState.swapCount} />
+                  <StatTile label={t.positionRebalances} value={poolMetricsState.positionRebalanceCount} />
                   <StatTile label={t.totalVolume} value={poolMetricsState.totalVolumeUsd} />
                   <StatTile label={t.lastFee} value={poolMetricsState.lastFeeBps === "--" ? "--" : `${poolMetricsState.lastFeeBps} bps`} />
                   <StatTile
@@ -1887,6 +2236,8 @@ function App() {
                         : `${(Number(poolMetricsState.lastLiquidityConcentrationBps) / 100).toFixed(0)}%`
                     }
                   />
+                  <StatTile label={t.activeTick} value={poolMetricsState.lastActiveTick} />
+                  <StatTile label={t.vaultCredit} value={poolMetricsState.lastVaultCreditBps === "--" ? "--" : `${poolMetricsState.lastVaultCreditBps} bps`} />
                 </div>
                 <p className="walletNote">
                   {poolMetricsState.lastReason === "--" ? t.chainHookTestNote : translateFeeReason(poolMetricsState.lastReason, language)}
@@ -1984,6 +2335,9 @@ function DeploymentPanel({ language }: { language: Language }) {
         <AddressRow label={t.factory} value={deployment.contracts.WorldCupMarketFactory} language={language} />
         <AddressRow label="Hook" value={deployment.contracts.MatchPulseHook} language={language} />
         <AddressRow label={t.poolManager} value={deployment.contracts.SimulatedPoolManager} language={language} />
+        {contractAddress("AgentExecutor") ? <AddressRow label={t.agentExecutor} value={contractAddress("AgentExecutor")} language={language} /> : null}
+        {contractAddress("MatchPulsePaymaster") ? <AddressRow label={t.paymaster} value={contractAddress("MatchPulsePaymaster")} language={language} /> : null}
+        <AddressRow label={t.oracleSigned} value={deployment.contracts.MatchOracleMock} language={language} />
         <AddressRow label="ARG token" value={deployment.predictionTokens.Argentina} language={language} />
         <AddressRow label="DRAW token" value={deployment.predictionTokens.Draw} language={language} />
         <AddressRow label="BRA token" value={deployment.predictionTokens.Brazil} language={language} />
@@ -2631,6 +2985,46 @@ function parseTweetCommand(raw: string) {
     asset: match[3].toUpperCase(),
     market: match[4]
   };
+}
+
+function contractAddress(name: string) {
+  const contracts = deployment.contracts as Record<string, string | undefined>;
+  return contracts[name] ?? "";
+}
+
+async function getOkxConnectUi(language: Language) {
+  if (!okxConnectUiPromise) {
+    okxConnectUiPromise = OKXUniversalConnectUI.init({
+      dappMetaData: {
+        icon: `${window.location.origin}${import.meta.env.BASE_URL}favicon.svg`,
+        name: "MatchPulse"
+      },
+      actionsConfiguration: {
+        modals: "all"
+      },
+      language: language === "zh" ? "zh_CN" : "en_US",
+      uiPreferences: {
+        theme: THEME.LIGHT
+      }
+    });
+  }
+  return okxConnectUiPromise;
+}
+
+function stringToHex(value: string): HexValue {
+  const bytes = new TextEncoder().encode(value);
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}` as HexValue;
+}
+
+function deterministicSessionKey(owner: HexAddress, outcome: Outcome, pulse: number): HexAddress {
+  let hash = 2166136261;
+  const input = `${owner}:${outcome}:${pulse}:matchpulse-session-key`;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8, "0");
+  return `0x${(hex.repeat(5)).slice(0, 40)}` as HexAddress;
 }
 
 function initialLogs(language: Language): EventLog[] {

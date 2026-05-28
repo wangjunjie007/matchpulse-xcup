@@ -419,6 +419,64 @@ h1 {
   gap: 9px;
 }
 
+.intentRail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(190px, auto);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.intentCard,
+.intentButton {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(3, 13, 11, 0.68);
+  color: #ffffff;
+}
+
+.intentCard {
+  padding: 12px;
+}
+
+.intentCard span {
+  display: block;
+  color: #9bd8bf;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.intentCard strong {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #f7d95b;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.intentCard small {
+  display: block;
+  margin-top: 5px;
+  color: #d8e6de;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.intentButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 66px;
+  padding: 12px;
+  background: #f7d95b;
+  color: #10251f;
+  font-weight: 950;
+}
+
 .chainActionButton,
 .secondaryButton,
 .primaryButton,
@@ -1869,6 +1927,7 @@ input[type="range"] {
   .topbar,
   .commandBar,
   .simulationDeck,
+  .intentRail,
   .marketGrid,
   .chainGrid,
   .judgeGrid,
@@ -1900,6 +1959,7 @@ input[type="range"] {
   }
 
   .commandActions,
+  .intentRail,
   .scoreStrip,
   .outcomeGrid,
   .ticket,
@@ -1927,6 +1987,10 @@ input[type="range"] {
 
   .simulationActions {
     grid-template-columns: 1fr;
+  }
+
+  .intentButton {
+    min-height: 48px;
   }
 
   .broadcastRail .statTile {

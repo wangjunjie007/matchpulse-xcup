@@ -15,6 +15,10 @@ const requiredContracts = [
   "MatchPulseHook",
   "SimulatedPoolManager"
 ];
+const optionalContracts = [
+  "AgentExecutor",
+  "MatchPulsePaymaster"
+];
 const requiredTokens = ["Argentina", "Draw", "Brazil"];
 
 const errors = [];
@@ -34,6 +38,12 @@ assert(bytes32Pattern.test(deployment.poolId), "poolId must be bytes32");
 
 for (const name of requiredContracts) {
   assert(deployment.contracts && addressPattern.test(deployment.contracts[name]), `contracts.${name} must be an EVM address`);
+}
+
+for (const name of optionalContracts) {
+  if (deployment.contracts?.[name] !== undefined) {
+    assert(addressPattern.test(deployment.contracts[name]), `contracts.${name} must be an EVM address when present`);
+  }
 }
 
 for (const name of requiredTokens) {

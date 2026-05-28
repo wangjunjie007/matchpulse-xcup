@@ -35,12 +35,14 @@ function normalize(address) {
   return getAddress(address);
 }
 
-const oracle = findCreate("MatchOracleMock");
+const oracle = findCreate("MatchPulseOracle");
 const factory = findCreate("WorldCupMarketFactory");
 const hook = findCreate("MatchPulseHook");
 const poolManager = findCreate("SimulatedPoolManager");
+const agentExecutor = findCreate("AgentExecutor");
+const paymaster = findCreate("MatchPulsePaymaster");
 const setPoolManager = findCall("MatchPulseHook", 0);
-const createMatch = findCall("MatchOracleMock", 0);
+const createMatch = findCall("MatchPulseOracle", 0);
 const createMarket = findCall("WorldCupMarketFactory", 0);
 const createPool = findCall("SimulatedPoolManager", 0);
 
@@ -49,9 +51,12 @@ if (predictionCreates.length !== 3) throw new Error(`Expected 3 PredictionToken 
 
 const contracts = {
   MatchOracleMock: normalize(oracle.contractAddress),
+  MatchPulseOracle: normalize(oracle.contractAddress),
   WorldCupMarketFactory: normalize(factory.contractAddress),
   MatchPulseHook: normalize(hook.contractAddress),
-  SimulatedPoolManager: normalize(poolManager.contractAddress)
+  SimulatedPoolManager: normalize(poolManager.contractAddress),
+  AgentExecutor: normalize(agentExecutor.contractAddress),
+  MatchPulsePaymaster: normalize(paymaster.contractAddress)
 };
 
 const predictionTokens = {
@@ -75,10 +80,12 @@ const next = {
   predictionTokens,
   poolId,
   transactions: {
-    deployMatchOracleMock: oracle.hash,
+    deployMatchPulseOracle: oracle.hash,
     deployWorldCupMarketFactory: factory.hash,
     deployMatchPulseHook: hook.hash,
     deploySimulatedPoolManager: poolManager.hash,
+    deployAgentExecutor: agentExecutor.hash,
+    deployMatchPulsePaymaster: paymaster.hash,
     setPoolManager: setPoolManager.hash,
     createMatch: createMatch.hash,
     createMarket: createMarket.hash,

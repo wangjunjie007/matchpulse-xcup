@@ -8,8 +8,10 @@ MatchPulse is currently a hackathon-grade X Layer testnet MVP:
 - The frontend reads real deployment addresses from `deployments/xlayer-testnet-1952.json`.
 - Wallet connection, network switching, `mintCompleteSet`, Hook test swaps, market settlement, and winner redemption are exposed in the UI.
 - Dynamic match intensity in the hero is a frontend simulation and is explicitly labeled as local-only.
-- The oracle is `MatchOracleMock`.
+- The deployed oracle is `MatchPulseOracle` with one trusted signer for testnet operation.
 - Hook lifecycle is exercised through `SimulatedPoolManager`, not an official production AMM pool manager.
+- The repository now includes the next upgrade contracts: `MatchPulseOracle`, `AgentExecutor`, `MatchPulsePaymaster`, and `MatchPulseHook.beforeModifyPosition`.
+- The frontend includes an OKX mobile-first connection path and a bounded AI session authorization signing flow.
 
 This is suitable for judging, demos, and testnet experimentation. It is not yet suitable for real-money public usage.
 
@@ -41,10 +43,12 @@ Required work:
   - `DynamicFeeApplied`.
 - Add wallet compatibility checks for OKX Wallet and MetaMask on desktop/mobile.
 - Add explicit testnet warnings and expected gas/cost copy.
+- Add signer-operator UX for `MatchPulseOracle` and expose current nonce/deadline/evidence hash.
+- Keep `ActiveLiquidityRebalanced` visible through frontend reads and the Subgraph.
 
 Exit criteria:
 
-- A judge or tester can connect a wallet, mint a complete set, finalize a mock score, settle the market, and redeem the winning token without reading code.
+- A judge or tester can connect a wallet, mint a complete set, finalize a signed score with the trusted signer wallet, settle the market, and redeem the winning token without reading code.
 - Browser checks pass on desktop and mobile.
 - `forge test -vvv` and `npm run build` pass.
 
@@ -59,7 +63,7 @@ Required work:
 - Replace `SimulatedPoolManager` with the production AMM integration selected for X Layer:
   - official Uniswap v4 PoolManager if available and appropriate;
   - otherwise a documented equivalent pool manager with the same Hook lifecycle guarantees.
-- Replace `MatchOracleMock` with a signed oracle adapter:
+- Upgrade `MatchPulseOracle` operations from one trusted signer to a signed oracle adapter:
   - one primary data source;
   - one fallback source;
   - signer quorum or admin delay for final settlement;
@@ -88,6 +92,13 @@ Required work:
   - public API for match and market state;
   - monitoring dashboards;
   - RPC fallback and alerting.
+- Wire `AgentExecutor` to audited routing and ERC-4337 account flows:
+  - short-lived session keys;
+  - per-match spend caps;
+  - strategy allowlists;
+  - cancellation path;
+  - monitoring for stale or abused keys.
+- Wire `MatchPulsePaymaster` to an EntryPoint-compatible sponsorship service.
 
 Exit criteria:
 
@@ -132,7 +143,7 @@ Required work:
 - Current market buy/sell behavior is not a full production prediction-market AMM.
 - Current Hook demo is v4-style but not yet bound to a production Uniswap v4 PoolManager deployment.
 - Current match intensity animation is local UX simulation, not the source of truth.
-- Current oracle is owner-operated mock infrastructure.
+- Current deployed oracle uses one trusted EIP-712 signer. Production still needs signer quorum, dispute rules, and monitored data-source operations.
 - Current contracts have focused test coverage, not a full audit-grade suite.
 
 ## Recommended Next Step
@@ -142,6 +153,6 @@ Finish Phase 1 first. It creates a complete testnet story without pretending the
 The highest leverage next implementation tasks are:
 
 1. Add match metadata reads to remove hard-coded team labels.
-2. Add event history from testnet logs.
-3. Add owner-aware oracle controls.
+2. Add event history from testnet logs and the Subgraph.
+3. Add trusted-signer oracle controls.
 4. Add portfolio/redeemable state for the connected wallet.
