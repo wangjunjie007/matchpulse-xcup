@@ -10,6 +10,7 @@ import {
   Bot,
   CheckCircle2,
   CircleDollarSign,
+  Clock3,
   ExternalLink,
   Gauge,
   Landmark,
@@ -38,6 +39,7 @@ import {
 import { Toaster, toast } from "sonner";
 import { createPublicClient, createWalletClient, custom, formatEther, formatUnits, http, parseEther } from "viem";
 import deployment from "../deployments/xlayer-testnet-1952.json";
+import stadiumNightUrl from "./assets/stadium-night.png";
 import { MatchState, baseFeeBps, quoteFee } from "./lib/feeModel";
 import "./styles.css";
 
@@ -176,12 +178,19 @@ const publicClient = createPublicClient({
 const copy = {
   zh: {
     eyebrow: "X Layer 黑客松 MVP",
-    intro: "世界杯预测市场控制台：用 v4-style Hook 把比赛波动、红牌和比分压力直接转化为链上 swap fee。",
+    intro: "国际足球杯赛预测市场控制台：用 v4-style Hook 把比赛波动、红牌和比分压力直接转化为链上 swap fee。",
     chainName: "X Layer 测试网",
     chainId: "Chain 1952",
     language: "语言",
     liveControls: "X Layer 链上控制",
     connectAndWrite: "连接钱包并写入测试网",
+    stadiumSignal: "国际足球杯赛 · 夜场",
+    broadcastMode: "实时比赛信号",
+    liveMinute: "比赛时间",
+    matchRisk: "市场风险",
+    crowdHeat: "现场热度",
+    cupTicker: "杯赛控制台",
+    matchTimeline: "比赛时间线",
     connected: "已连接",
     noWallet: "未检测到钱包，请在 OKX Wallet 浏览器打开，或安装并启用 OKX Wallet / MetaMask。",
     noWalletDetected: "暂未检测到钱包 Provider",
@@ -291,12 +300,19 @@ const copy = {
   },
   en: {
     eyebrow: "X Layer Hackathon MVP",
-    intro: "A World Cup prediction-market console where a v4-style Hook converts match volatility into on-chain swap fees.",
+    intro: "An international football cup prediction-market console where a v4-style Hook converts match volatility into on-chain swap fees.",
     chainName: "X Layer testnet",
     chainId: "Chain 1952",
     language: "Language",
     liveControls: "Live X Layer controls",
     connectAndWrite: "Connect wallet and write to testnet",
+    stadiumSignal: "International football cup · Night match",
+    broadcastMode: "Live match signal",
+    liveMinute: "Match clock",
+    matchRisk: "Market risk",
+    crowdHeat: "Crowd heat",
+    cupTicker: "Cup control desk",
+    matchTimeline: "Match timeline",
     connected: "Connected",
     noWallet: "No injected wallet found. Open this page in OKX Wallet browser, or install/enable OKX Wallet or MetaMask.",
     noWalletDetected: "No wallet provider detected yet",
@@ -844,15 +860,29 @@ function App() {
       <main className="shell">
         <Toaster richColors position="top-right" />
 
-        <motion.section className="heroConsole" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.section
+          className="heroConsole"
+          style={{ "--stadium-image": `url(${stadiumNightUrl})` } as React.CSSProperties}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="stadiumWash" aria-hidden="true" />
           <div className="topbar">
             <div className="titleBlock">
               <div className="eyebrow">
                 <Radio size={15} />
-                {t.eyebrow}
+                {t.stadiumSignal}
               </div>
               <h1>MatchPulse</h1>
               <p>{t.intro}</p>
+              <div className="cupTicker" aria-label={t.cupTicker}>
+                <span>ARG</span>
+                <strong>{match.state.homeScore}</strong>
+                <i />
+                <strong>{match.state.awayScore}</strong>
+                <span>BRA</span>
+                <em>{match.state.minute || "00"}'</em>
+              </div>
             </div>
 
             <div className="topControls">
@@ -871,6 +901,13 @@ function App() {
                 <strong>{t.chainId}</strong>
               </div>
             </div>
+          </div>
+
+          <div className="broadcastRail">
+            <StatTile label={t.broadcastMode} value={t.phase[match.state.phase]} />
+            <StatTile label={t.liveMinute} value={`${match.state.minute || "00"}'`} />
+            <StatTile label={t.matchRisk} value={`${fee.feeBps} bps`} />
+            <StatTile label={t.crowdHeat} value={crowdHeatLabel(fee.volatilityScore, language)} />
           </div>
 
           <div className="commandBar">
@@ -927,6 +964,12 @@ function App() {
                   </TipButton>
                 </div>
 
+                <div className="teamRibbon" aria-hidden="true">
+                  <span className="ribbonArgentina" />
+                  <span className="ribbonNeutral" />
+                  <span className="ribbonBrazil" />
+                </div>
+
                 <div className="scoreStrip">
                   <Team name={outcomeCopy[language].Argentina} score={match.state.homeScore} active={maxOutcome === "Argentina"} />
                   <div className="clock">
@@ -934,6 +977,42 @@ function App() {
                     <span>{t.phase[match.state.phase]}</span>
                   </div>
                   <Team name={outcomeCopy[language].Brazil} score={match.state.awayScore} active={maxOutcome === "Brazil"} />
+                </div>
+
+                <div className="matchTimeline">
+                  <div className="timelineTitle">
+                    <Clock3 size={15} />
+                    <span>{t.matchTimeline}</span>
+                  </div>
+                  <div className="timelineTrack">
+                    {timeline.map((item, index) => (
+                      <button
+                        key={item.label.en}
+                        type="button"
+                        className={`timelineNode ${index === step ? "active" : ""} ${index < step ? "passed" : ""}`}
+                        onClick={() => {
+                          setStep(index);
+                          const quote = quoteFee(timeline[index].state);
+                          const tone: EventLog["tone"] = quote.feeBps > 100 ? "hot" : quote.feeBps > baseFeeBps ? "warn" : "ok";
+                          setLogs((current) =>
+                            [
+                              {
+                                id: Date.now(),
+                                label: timeline[index].label[language],
+                                detail: `${t.hookFeeLog} ${quote.feeBps} bps: ${translateFeeReason(quote.reason, language)}.`,
+                                tone
+                              },
+                              ...current
+                            ].slice(0, 6)
+                          );
+                        }}
+                        aria-label={item.label[language]}
+                      >
+                        <span>{item.state.minute || 0}'</span>
+                        <strong>{item.label[language]}</strong>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="eventCard">
@@ -1284,6 +1363,11 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function crowdHeatLabel(score: number, language: Language) {
+  if (language === "zh") return score > 60 ? "高热" : score > 20 ? "升温" : "平稳";
+  return score > 60 ? "HOT" : score > 20 ? "ACTIVE" : "CALM";
 }
 
 function normalizeBook(next: Record<Outcome, number>) {
