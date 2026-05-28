@@ -1,21 +1,28 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
   Bot,
   CircleDollarSign,
+  ExternalLink,
   Gauge,
   Landmark,
+  PlugZap,
   Radio,
   RefreshCw,
   ShieldCheck,
+  Wallet,
   Trophy,
   Zap
 } from "lucide-react";
+import { createWalletClient, custom, formatEther, parseEther } from "viem";
+import deployment from "../deployments/xlayer-testnet-1952.json";
 import { MatchState, baseFeeBps, quoteFee } from "./lib/feeModel";
 import "./styles.css";
 
 type Outcome = "Argentina" | "Draw" | "Brazil";
+type HexAddress = `0x${string}`;
+type HexValue = `0x${string}`;
 
 type EventLog = {
   id: number;
@@ -23,6 +30,43 @@ type EventLog = {
   detail: string;
   tone: "ok" | "warn" | "hot";
 };
+
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] | object[] }) => Promise<unknown>;
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+};
+
+declare global {
+  interface Window {
+    ethereum?: EthereumProvider;
+  }
+}
+
+const xLayerTestnet = {
+  id: 1952,
+  name: "X Layer testnet",
+  nativeCurrency: { decimals: 18, name: "OKB", symbol: "OKB" },
+  rpcUrls: {
+    default: { http: [deployment.rpcUrl] },
+    public: { http: [deployment.rpcUrl] }
+  },
+  blockExplorers: {
+    default: { name: "OKX Explorer", url: deployment.explorer }
+  }
+} as const;
+
+const factoryAbi = [
+  {
+    type: "function",
+    name: "mintCompleteSet",
+    stateMutability: "payable",
+    inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: []
+  }
+] as const;
+
+const mintValueEth = "0.001";
 
 const timeline: Array<{ label: string; state: MatchState; detail: string }> = [
   {
@@ -98,6 +142,12 @@ function App() {
   const [book, setBook] = useState(initialBook);
   const [stake, setStake] = useState(150);
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome>("Argentina");
+  const [walletAddress, setWalletAddress] = useState<HexAddress | null>(null);
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
+  const [walletBalance, setWalletBalance] = useState<string>("--");
+  const [txHash, setTxHash] = useState<HexValue | null>(null);
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [logs, setLogs] = useState<EventLog[]>([
     {
       id: 1,
@@ -119,6 +169,54 @@ function App() {
   const feeCost = (stake * fee.feeBps) / 10_000;
   const tokens = (stake - feeCost) / Math.max(impliedPrice, 0.01);
   const maxOutcome = Object.entries(book).sort((a, b) => b[1] - a[1])[0][0] as Outcome;
+  const walletReady = walletAddress && walletChainId === deployment.chainId;
+  const explorerBase = deployment.explorer.replace(/\/$/, "");
+
+  useEffect(() => {
+    if (!window.ethereum) return;
+
+    const handleAccounts = (accounts: unknown) => {
+      const [first] = Array.isArray(accounts) ? accounts : [];
+      setWalletAddress(typeof first === "string" ? (first as HexAddress) : null);
+    };
+    const handleChain = (chainId: unknown) => {
+      if (typeof chainId === "string") {
+        setWalletChainId(Number.parseInt(chainId, 16));
+      }
+    };
+
+    window.ethereum
+      .request({ method: "eth_accounts" })
+      .then(handleAccounts)
+      .catch(() => undefined);
+    window.ethereum
+      .request({ method: "eth_chainId" })
+      .then(handleChain)
+      .catch(() => undefined);
+    window.ethereum.on?.("accountsChanged", handleAccounts);
+    window.ethereum.on?.("chainChanged", handleChain);
+
+    return () => {
+      window.ethereum?.removeListener?.("accountsChanged", handleAccounts);
+      window.ethereum?.removeListener?.("chainChanged", handleChain);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!window.ethereum || !walletAddress) {
+      setWalletBalance("--");
+      return;
+    }
+
+    window.ethereum
+      .request({ method: "eth_getBalance", params: [walletAddress, "latest"] })
+      .then((balance) => {
+        if (typeof balance === "string") {
+          setWalletBalance(Number(formatEther(BigInt(balance))).toFixed(4));
+        }
+      })
+      .catch(() => setWalletBalance("--"));
+  }, [walletAddress, walletChainId]);
 
   function advance() {
     const next = (step + 1) % timeline.length;
@@ -154,6 +252,112 @@ function App() {
         ...current
       ].slice(0, 6)
     );
+  }
+
+  async function connectWallet() {
+    setWalletError(null);
+    if (!window.ethereum) {
+      setWalletError("No injected wallet found. Install OKX Wallet or MetaMask.");
+      return;
+    }
+    setWalletBusy(true);
+    try {
+      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
+      const chainId = (await window.ethereum.request({ method: "eth_chainId" })) as string;
+      setWalletAddress((accounts[0] as HexAddress) ?? null);
+      setWalletChainId(Number.parseInt(chainId, 16));
+    } catch (error) {
+      setWalletError(readError(error));
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function switchToXLayer() {
+    setWalletError(null);
+    if (!window.ethereum) {
+      setWalletError("No injected wallet found. Install OKX Wallet or MetaMask.");
+      return;
+    }
+    setWalletBusy(true);
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x7a0" }]
+      });
+      setWalletChainId(deployment.chainId);
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? Number(error.code) : 0;
+      if (code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: "0x7a0",
+              chainName: "X Layer testnet",
+              nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
+              rpcUrls: [deployment.rpcUrl],
+              blockExplorerUrls: [deployment.explorer]
+            }
+          ]
+        });
+        setWalletChainId(deployment.chainId);
+      } else {
+        setWalletError(readError(error));
+      }
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function mintOnXLayer() {
+    setWalletError(null);
+    setTxHash(null);
+    if (!window.ethereum) {
+      setWalletError("No injected wallet found. Install OKX Wallet or MetaMask.");
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    if (walletChainId !== deployment.chainId) {
+      await switchToXLayer();
+      return;
+    }
+
+    setWalletBusy(true);
+    try {
+      const client = createWalletClient({
+        account: walletAddress,
+        chain: xLayerTestnet,
+        transport: custom(window.ethereum)
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.WorldCupMarketFactory as HexAddress,
+        abi: factoryAbi,
+        functionName: "mintCompleteSet",
+        args: [deployment.matchId as HexValue],
+        value: parseEther(mintValueEth)
+      });
+      setTxHash(hash);
+      const tone: EventLog["tone"] = "ok";
+      setLogs((current) =>
+        [
+          {
+            id: Date.now(),
+            label: "X Layer write",
+            detail: `mintCompleteSet submitted: ${shortHash(hash)}.`,
+            tone
+          },
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      setWalletError(readError(error));
+    } finally {
+      setWalletBusy(false);
+    }
   }
 
   return (
@@ -286,6 +490,65 @@ function App() {
           </button>
         </section>
 
+        <section className="walletPanel">
+          <div className="panelTitle">
+            <Wallet size={18} />
+            <span>X Layer wallet write</span>
+          </div>
+          <div className="walletStatus">
+            <div>
+              <span>Wallet</span>
+              <strong>{walletAddress ? shortHash(walletAddress) : "Not connected"}</strong>
+            </div>
+            <div>
+              <span>Chain</span>
+              <strong>{walletChainId ? walletChainId : "--"}</strong>
+            </div>
+            <div>
+              <span>Balance</span>
+              <strong>{walletBalance} OKB</strong>
+            </div>
+          </div>
+          <div className="walletActions">
+            <button type="button" className="secondaryButton" onClick={connectWallet} disabled={walletBusy}>
+              <PlugZap size={17} />
+              {walletAddress ? "Reconnect" : "Connect wallet"}
+            </button>
+            <button type="button" className="secondaryButton" onClick={switchToXLayer} disabled={walletBusy}>
+              <Landmark size={17} />
+              Switch network
+            </button>
+          </div>
+          <button type="button" className="primaryButton" onClick={mintOnXLayer} disabled={walletBusy}>
+            <Zap size={18} />
+            {walletBusy ? "Waiting for wallet" : `Mint complete set (${mintValueEth} OKB)`}
+          </button>
+          <p className="walletNote">
+            Calls the deployed factory on X Layer testnet and mints ARG / DRAW / BRA outcome tokens.
+          </p>
+          {walletError ? <div className="walletError">{walletError}</div> : null}
+          {txHash ? (
+            <a className="txLink" href={`${explorerBase}/tx/${txHash}`} target="_blank" rel="noreferrer">
+              View transaction <ExternalLink size={14} />
+            </a>
+          ) : null}
+        </section>
+
+        <section className="deployPanel">
+          <div className="panelTitle">
+            <Landmark size={18} />
+            <span>Live deployment</span>
+          </div>
+          <div className="addressList">
+            <AddressRow label="Factory" value={deployment.contracts.WorldCupMarketFactory} />
+            <AddressRow label="Hook" value={deployment.contracts.MatchPulseHook} />
+            <AddressRow label="Pool manager" value={deployment.contracts.SimulatedPoolManager} />
+            <AddressRow label="ARG token" value={deployment.predictionTokens.Argentina} />
+            <AddressRow label="DRAW token" value={deployment.predictionTokens.Draw} />
+            <AddressRow label="BRA token" value={deployment.predictionTokens.Brazil} />
+          </div>
+        </section>
+
         <section className="agentPanel">
           <div className="panelTitle">
             <Bot size={18} />
@@ -317,6 +580,17 @@ function App() {
         </section>
       </section>
     </main>
+  );
+}
+
+function AddressRow({ label, value }: { label: string; value: string }) {
+  const explorerBase = deployment.explorer.replace(/\/$/, "");
+  return (
+    <a className="addressRow" href={`${explorerBase}/address/${value}`} target="_blank" rel="noreferrer">
+      <span>{label}</span>
+      <strong>{shortHash(value)}</strong>
+      <ExternalLink size={13} />
+    </a>
   );
 }
 
@@ -359,6 +633,18 @@ function agentCopy(state: MatchState, feeBps: number, leader: Outcome) {
     return `${leader} is the market leader after final whistle. I can settle the market, prepare redemption copy, and publish the proof links.`;
   }
   return `Live volatility is active at ${feeBps} bps. ${leader} has the strongest implied price, but the Hook is charging makers for close-score risk.`;
+}
+
+function shortHash(value: string) {
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function readError(error: unknown) {
+  if (typeof error === "object" && error && "shortMessage" in error && typeof error.shortMessage === "string") {
+    return error.shortMessage;
+  }
+  if (error instanceof Error) return error.message;
+  return "Wallet request failed.";
 }
 
 createRoot(document.getElementById("root") as HTMLElement).render(<App />);

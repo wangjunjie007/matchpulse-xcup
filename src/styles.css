@@ -109,6 +109,8 @@ h1 {
 .matchBoard,
 .hookPanel,
 .tradePanel,
+.walletPanel,
+.deployPanel,
 .agentPanel,
 .logPanel {
   border: 1px solid #d8dfd8;
@@ -273,6 +275,8 @@ h1 {
 
 .hookPanel,
 .tradePanel,
+.walletPanel,
+.deployPanel,
 .agentPanel,
 .logPanel {
   padding: 18px;
@@ -347,6 +351,8 @@ h1 {
 }
 
 .tradePanel,
+.walletPanel,
+.deployPanel,
 .agentPanel,
 .logPanel {
   min-height: 220px;
@@ -395,6 +401,123 @@ input[type="range"] {
   background: #123f35;
   color: #ffffff;
   font-weight: 850;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.secondaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid #cbd8ce;
+  border-radius: 8px;
+  background: #f7faf6;
+  color: #214f43;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.walletStatus {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.walletStatus div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dbe3dc;
+  border-radius: 8px;
+  background: #fafbf9;
+}
+
+.walletStatus span,
+.addressRow span,
+.walletNote {
+  color: #66766d;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.walletStatus strong {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  color: #16231d;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.walletActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.walletNote {
+  margin-top: 12px;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.walletError {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff1ed;
+  color: #a43e1d;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.txLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: #17624f;
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.addressList {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.addressRow {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #dce4dd;
+  border-radius: 8px;
+  background: #fbfcfa;
+  color: inherit;
+  text-decoration: none;
+}
+
+.addressRow strong {
+  overflow: hidden;
+  color: #18261f;
+  font-size: 13px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agentBubble {
@@ -477,6 +600,8 @@ input[type="range"] {
   .scoreStrip,
   .outcomeGrid,
   .ticket,
+  .walletStatus,
+  .walletActions,
   .agentActions {
     grid-template-columns: 1fr;
   }
