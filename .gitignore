@@ -15,6 +15,7 @@ coverage/
 
 # Local verification artifacts
 output/
+tmp/
 
 # Logs and OS files
 *.log
