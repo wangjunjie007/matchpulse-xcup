@@ -7,7 +7,9 @@ MatchPulse is an AI match decision engine on X Layer where a visible multi-agent
 ## Links
 
 - Live demo: https://wangjunjie007.github.io/matchpulse-xcup/
-- Demo video: 1080p/60fps English narrated walkthrough with subtitles, feature callouts, and dynamic-state changes: https://github.com/wangjunjie007/matchpulse-xcup/blob/main/docs/matchpulse-xcup-demo.mp4
+- English demo video: 1080p/60fps English frontend, subtitles, narration, feature callouts, and dynamic-state changes: https://github.com/wangjunjie007/matchpulse-xcup/blob/main/docs/matchpulse-xcup-demo-en.mp4
+- Chinese demo video: 1080p/60fps Chinese frontend, subtitles, narration, feature callouts, and dynamic-state changes: https://github.com/wangjunjie007/matchpulse-xcup/blob/main/docs/matchpulse-xcup-demo-zh.mp4
+- Legacy/default video path: https://github.com/wangjunjie007/matchpulse-xcup/blob/main/docs/matchpulse-xcup-demo.mp4
 - GitHub: https://github.com/wangjunjie007/matchpulse-xcup
 - X Layer testnet explorer: https://www.okx.com/web3/explorer/xlayer-test
 
