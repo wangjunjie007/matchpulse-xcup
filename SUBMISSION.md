@@ -2,7 +2,7 @@
 
 ## One-line Pitch
 
-MatchPulse is an international football cup prediction market on X Layer where a Uniswap v4-style Hook turns live match volatility into dynamic swap fees.
+MatchPulse is an AI match decision engine on X Layer where a visible multi-agent war room turns live football intelligence, on-chain odds, and match volatility into auditable prediction-market actions and dynamic Hook fees.
 
 ## Links
 
@@ -45,6 +45,17 @@ Outcome tokens:
 - A real X Layer testnet Hook test transaction button that calls `SimulatedPoolManager.simulateSwap(poolId, ...)` and triggers Hook `beforeSwap` / `afterSwap` on-chain.
 - A testnet settlement loop that can write the final mock score, call `settle(matchId)`, and redeem winning tokens through `redeem(matchId, amount)`.
 - A clearly labeled local-only dynamic match simulation that changes frontend intensity, odds, and fee visuals without pretending to be the chain source of truth.
+- A multi-agent war room that separates Scraper, Quant, and Strategy / Execution agents into visible decision logs.
+- A multimodal oracle verification panel showing how text reports, image evidence, and on-chain commits become auditable settlement inputs.
+- Farcaster Frame / Telegram Mini App and account-abstraction UX mockups for the planned zero-friction user funnel.
+- Dynamic badge / leaderboard surfaces that convert repeated predictions into persistent X Layer user assets.
+- A deployment config validator that checks numeric `chainId`, EVM addresses, `bytes32` IDs, and transaction hashes before tests/builds.
+
+## Implementation Boundary
+
+- Real today: contracts, Hook quote reads, pool metrics reads, wallet connection, X Layer switching, minting, Hook test transaction, settlement/redeem UI, deployment explorer links, config validation, and public GitHub Pages demo.
+- Demo autonomy today: multi-agent logs, multimodal evidence stream, Farcaster / Telegram entry surfaces, AA sponsorship state, and dynamic badge progression are frontend product simulations with explicit labels.
+- Production next: connect Scraper to Kimi/Grok/Neynar/Telegram APIs, run Quant/Strat agents in a backend worker, add an AA provider/paymaster, and submit signed oracle evidence on-chain.
 
 ## Hook Fee Model
 
@@ -72,6 +83,7 @@ Base fee starts at `30 bps` and is capped at `300 bps`.
 8. Call `settle(matchId)` from the UI.
 9. Redeem winning tokens with `redeem(matchId, amount)`.
 10. Open the transactions in the OKX X Layer testnet explorer.
+11. Open the AI War Room tab and inspect the multi-agent decision chain, multimodal oracle evidence, social entry funnel, dynamic badge asset, and X Layer proof links.
 
 Verified Hook test transaction:
 

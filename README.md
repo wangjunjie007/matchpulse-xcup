@@ -1,6 +1,6 @@
 # MatchPulse X Cup
 
-MatchPulse is an international football cup prediction market MVP for X Layer. The product combines outcome tokens, a match-state oracle, and a Uniswap v4-style Hook that dynamically prices live match volatility into swap fees.
+MatchPulse is an AI match decision engine and international football cup prediction market MVP for X Layer. The product combines outcome tokens, a match-state oracle, a Uniswap v4-style Hook that dynamically prices live match volatility into swap fees, and a visible multi-agent war room that explains how intelligence, quant signals, and strategy execution converge.
 
 Live demo: https://wangjunjie007.github.io/matchpulse-xcup/
 
@@ -12,6 +12,8 @@ Demo video: [1080p/60fps English narrated walkthrough](docs/matchpulse-xcup-demo
 - X Layer ready: contracts are Foundry-based and configured for X Layer mainnet/testnet RPCs.
 - Hook-centered: `MatchPulseHook` exposes `beforeSwap` and `afterSwap` callbacks and returns deterministic fee quotes from oracle state.
 - AI Agent angle: the UI includes an agent co-pilot flow for market creation, fee explanations, and post-match recaps.
+- Multi-agent war room: Scraper, Quant, and Strategy agents are shown as an autonomous demo loop, with clear production adapter boundaries for live social APIs and backend execution.
+- Growth surface: Farcaster / Telegram and account-abstraction flows are modeled in the UI as the planned zero-friction funnel into X Layer activity.
 
 ## Architecture
 
@@ -56,6 +58,7 @@ Max fee is capped at `300 bps`.
 
 ```bash
 npm install
+npm run validate:deployment
 npm run test:contracts
 npm run dev
 ```
@@ -65,11 +68,14 @@ Open the Vite URL printed by the dev server, normally `http://127.0.0.1:5178`.
 ## Contract Tests
 
 ```bash
+npm run validate:deployment
 forge test -vvv
+npm run build
 ```
 
 Covered cases:
 
+- Deployment JSON validation for numeric `chainId`, EVM addresses, `bytes32` IDs, and transaction hashes.
 - Scheduled markets quote baseline fee.
 - Late-game close-score red-card pressure raises the Hook fee.
 - Users can mint complete outcome sets.

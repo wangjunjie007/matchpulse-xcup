@@ -8,18 +8,28 @@ import {
   ArrowUpRight,
   BarChart3,
   Bot,
+  BrainCircuit,
   CheckCircle2,
   CircleDollarSign,
   Clock3,
   ExternalLink,
+  FileImage,
   Gauge,
   Landmark,
   Languages,
+  Link2,
   LineChart as LineChartIcon,
+  MessageCircle,
+  Network,
   PlugZap,
   Radio,
+  Radar,
   RefreshCw,
+  ScanEye,
   ShieldCheck,
+  Sparkles,
+  Trophy,
+  Users,
   Wallet,
   X,
   Zap
@@ -68,6 +78,26 @@ type TimelineEntry = {
   state: MatchState;
   detail: Record<Language, string>;
 };
+
+type WarRoomEvent = {
+  agent: Record<Language, string>;
+  role: Record<Language, string>;
+  title: Record<Language, string>;
+  detail: Record<Language, string>;
+  signal: Record<Language, string>;
+  metric: string;
+  confidence: number;
+  tone: "ok" | "warn" | "hot";
+};
+
+type OracleSignal = {
+  label: Record<Language, string>;
+  detail: Record<Language, string>;
+  confidence: number;
+  source: Record<Language, string>;
+};
+
+type SocialMode = "farcaster" | "telegram";
 
 type PoolMetricsState = {
   totalVolumeUsd: string;
@@ -233,7 +263,7 @@ const erc20Abi = [
 ] as const;
 
 const mintValueEth = "0.001";
-const poolId = "0x0175cb519b77203a16fff09cd0e584e7432888376982fa289402b45b04507430" as HexValue;
+const poolId = deployment.poolId as HexValue;
 const simulationIntervalMs = 2_400;
 const publicClient = createPublicClient({
   chain: xLayerTestnet,
@@ -276,6 +306,7 @@ const copy = {
     waiting: "等待中",
     openDeployment: "查看部署",
     marketTab: "市场",
+    warRoomTab: "AI 战情室",
     chainTab: "链上",
     judgeTab: "评委视图",
     quarterFinal: "四分之一决赛",
@@ -360,7 +391,7 @@ const copy = {
     whyItMatters: "为什么重要",
     whyText: "体育预测市场会在进球、红牌、点球和终场前反转时遭遇极高波动。MatchPulse 把这些信号放进 Hook 层，动态提高交易成本，降低 LP 被 toxic flow 冲击的风险。",
     validation: "验证结果",
-    validationText: "合约测试 3/3 通过，前端构建通过，X Layer testnet 合约已部署，GitHub Pages 可公开访问。",
+    validationText: "合约测试 3/3 通过，配置校验脚本检查 chainId/地址/bytes32/交易哈希类型，前端构建通过，X Layer testnet 合约已部署，GitHub Pages 可公开访问。",
     phase: {
       Scheduled: "赛前",
       LiveFirstHalf: "上半场直播",
@@ -420,6 +451,7 @@ const copy = {
     waiting: "Waiting",
     openDeployment: "Open deployment",
     marketTab: "Market",
+    warRoomTab: "AI War Room",
     chainTab: "On-chain",
     judgeTab: "Judge view",
     quarterFinal: "Quarter Final",
@@ -504,7 +536,7 @@ const copy = {
     whyItMatters: "Why it matters",
     whyText: "Sports prediction markets face extreme volatility during goals, red cards, penalties and late reversals. MatchPulse moves those signals into the Hook layer to reduce LP exposure to toxic flow.",
     validation: "Validation",
-    validationText: "Contract tests pass 3/3, frontend build passes, X Layer testnet contracts are deployed, and GitHub Pages is publicly accessible.",
+    validationText: "Contract tests pass 3/3, the config validator checks numeric chainId plus address / bytes32 / tx-hash formats, frontend build passes, X Layer testnet contracts are deployed, and GitHub Pages is publicly accessible.",
     phase: {
       Scheduled: "Scheduled",
       LiveFirstHalf: "Live First Half",
@@ -579,6 +611,84 @@ const timeline: TimelineEntry[] = [
   }
 ];
 
+const warRoomEvents: WarRoomEvent[] = [
+  {
+    agent: { zh: "Agent A", en: "Agent A" },
+    role: { zh: "突发情报抓取", en: "Breaking News Scraper" },
+    title: { zh: "赛前社交信号升温", en: "Pre-match social signal detected" },
+    detail: {
+      zh: "演示适配器监听记者流、Farcaster 讨论和官方公告，识别到阿根廷首发确认后的积极情绪扩散。",
+      en: "Demo adapter watches reporter feeds, Farcaster chatter, and official posts; Argentina lineup sentiment turns positive."
+    },
+    signal: { zh: "情绪: Bullish ARG", en: "Sentiment: Bullish ARG" },
+    metric: "87%",
+    confidence: 87,
+    tone: "ok"
+  },
+  {
+    agent: { zh: "Agent B", en: "Agent B" },
+    role: { zh: "链上赔率分析", en: "On-chain Quant" },
+    title: { zh: "赔率与流动性出现偏差", en: "Odds and liquidity diverge" },
+    detail: {
+      zh: "读取 X Layer Hook 报价、池指标和结果 Token 价格，发现巴西方向交易拥挤但费用保护仍可覆盖 LP 风险。",
+      en: "Reads X Layer Hook quotes, pool metrics, and outcome-token prices; Brazil flow is crowded but fee protection still covers LP risk."
+    },
+    signal: { zh: "定价: 轻微错配", en: "Pricing: Mild dislocation" },
+    metric: "+42 bps",
+    confidence: 79,
+    tone: "warn"
+  },
+  {
+    agent: { zh: "Agent C", en: "Agent C" },
+    role: { zh: "策略推演与执行", en: "Strategy & Execution" },
+    title: { zh: "生成可审计策略动作", en: "Auditable strategy action prepared" },
+    detail: {
+      zh: "综合情报和链上数据后，给出小额跟随阿根廷、保留平局保护、等待链上 Hook 交易确认的执行计划。",
+      en: "Combines intelligence and market data into a small Argentina-follow action with Draw protection and an on-chain Hook confirmation gate."
+    },
+    signal: { zh: "动作: 跟单 + 风险限额", en: "Action: Follow + risk cap" },
+    metric: "0.31 OKB",
+    confidence: 83,
+    tone: "hot"
+  }
+];
+
+const oracleSignals: OracleSignal[] = [
+  {
+    label: { zh: "文本报告", en: "Text report" },
+    detail: {
+      zh: "伤病、首发和官方公告由实时文本模型归一化为结构化 match signal。",
+      en: "Injury, lineup, and official posts are normalized into structured match signals."
+    },
+    confidence: 91,
+    source: { zh: "生产适配器: Kimi/Grok API", en: "Production adapter: Kimi/Grok API" }
+  },
+  {
+    label: { zh: "图像证据", en: "Image evidence" },
+    detail: {
+      zh: "多模态模型验证比分牌、VAR 截图或伤病报告原图，输出可签名证据摘要。",
+      en: "Multimodal model checks scoreboards, VAR screenshots, or medical images and emits a signable evidence digest."
+    },
+    confidence: 88,
+    source: { zh: "当前演示: 本地证据流", en: "Current demo: local evidence stream" }
+  },
+  {
+    label: { zh: "链上提交", en: "On-chain commit" },
+    detail: {
+      zh: "Oracle 结果进入 MatchOracleMock.updateMatch，再驱动 Factory settle/redeem 闭环。",
+      en: "Oracle result flows into MatchOracleMock.updateMatch, then drives Factory settlement and redemption."
+    },
+    confidence: 100,
+    source: { zh: "已部署: X Layer testnet", en: "Deployed: X Layer testnet" }
+  }
+];
+
+const badgeLevels = [
+  { label: { zh: "新秀分析员", en: "Rookie Analyst" }, score: 42 },
+  { label: { zh: "战术大师", en: "Tactical Master" }, score: 76 },
+  { label: { zh: "世界杯量化官", en: "World Cup Quant" }, score: 94 }
+];
+
 const initialBook: Record<Outcome, number> = { Argentina: 43, Draw: 24, Brazil: 33 };
 
 function App() {
@@ -614,6 +724,7 @@ function App() {
   });
   const [chainReadBusy, setChainReadBusy] = useState(false);
   const [logs, setLogs] = useState<EventLog[]>(initialLogs("zh"));
+  const [socialMode, setSocialMode] = useState<SocialMode>("farcaster");
 
   const t = copy[language];
   const match = dynamicMatch;
@@ -627,6 +738,9 @@ function App() {
   const providerName = getWalletProviderName();
   const explorerBase = deployment.explorer.replace(/\/$/, "");
   const intensityPercent = Math.max(8, Math.min(100, fee.volatilityScore));
+  const activeAgentIndex = simPulse % warRoomEvents.length;
+  const strategyConfidence = Math.min(99, Math.round((fee.volatilityScore + chainQuote.volatilityScore + warRoomEvents[activeAgentIndex].confidence) / 3));
+  const autonomyScore = Math.min(100, 68 + activeAgentIndex * 8 + Math.round(fee.volatilityScore / 8));
   const heroStyle = {
     "--stadium-image": `url(${stadiumNightUrl})`,
     "--intensity": `${intensityPercent}%`
@@ -1342,6 +1456,7 @@ function App() {
         <Tabs.Root defaultValue="market" className="workspaceTabs">
           <Tabs.List className="tabList" aria-label="MatchPulse sections">
             <Tabs.Trigger value="market">{t.marketTab}</Tabs.Trigger>
+            <Tabs.Trigger value="warroom">{t.warRoomTab}</Tabs.Trigger>
             <Tabs.Trigger value="chain">{t.chainTab}</Tabs.Trigger>
             <Tabs.Trigger value="judge">{t.judgeTab}</Tabs.Trigger>
           </Tabs.List>
@@ -1527,6 +1642,23 @@ function App() {
             </section>
           </Tabs.Content>
 
+          <Tabs.Content value="warroom" className="tabContent">
+            <WarRoomPanel
+              language={language}
+              activeAgentIndex={activeAgentIndex}
+              strategyConfidence={strategyConfidence}
+              autonomyScore={autonomyScore}
+              selectedOutcome={selectedOutcome}
+              socialMode={socialMode}
+              setSocialMode={setSocialMode}
+              explorerBase={explorerBase}
+              chainQuote={chainQuote}
+              feeBps={fee.feeBps}
+              intensityPercent={intensityPercent}
+              walletReady={walletReady}
+            />
+          </Tabs.Content>
+
           <Tabs.Content value="chain" className="tabContent">
             <section className="chainGrid">
               <section className="walletPanel panelSurface">
@@ -1702,6 +1834,198 @@ function DeploymentPanel({ language }: { language: Language }) {
         </Dialog.Portal>
       </Dialog.Root>
     </section>
+  );
+}
+
+function WarRoomPanel({
+  language,
+  activeAgentIndex,
+  strategyConfidence,
+  autonomyScore,
+  selectedOutcome,
+  socialMode,
+  setSocialMode,
+  explorerBase,
+  chainQuote,
+  feeBps,
+  intensityPercent,
+  walletReady
+}: {
+  language: Language;
+  activeAgentIndex: number;
+  strategyConfidence: number;
+  autonomyScore: number;
+  selectedOutcome: Outcome;
+  socialMode: SocialMode;
+  setSocialMode: (mode: SocialMode) => void;
+  explorerBase: string;
+  chainQuote: ChainQuote;
+  feeBps: number;
+  intensityPercent: number;
+  walletReady: boolean;
+}) {
+  const activeAgent = warRoomEvents[activeAgentIndex];
+  const followCopy =
+    socialMode === "farcaster"
+      ? language === "zh"
+        ? "Frame 内一键跟单 AI 策略"
+        : "One-tap AI follow inside a Frame"
+      : language === "zh"
+        ? "Telegram 群内唤起小程序"
+        : "Launch Mini App inside a Telegram chat";
+  const explorerTx = deployment.transactions.verifiedSimulatedSwap;
+  const badge = badgeLevels[Math.min(badgeLevels.length - 1, Math.floor(strategyConfidence / 34))];
+
+  return (
+    <section className="warRoomGrid">
+      <section className="warHero panelSurface">
+        <div className="warHeroHeader">
+          <PanelTitle icon={<BrainCircuit size={18} />} label={language === "zh" ? "多智能体战情室" : "Multi-agent war room"} />
+          <span>{language === "zh" ? "演示自治循环 · 生产可接 API 适配器" : "Demo autonomous loop · production API adapters ready"}</span>
+        </div>
+        <div className="warHeroBody">
+          <div>
+            <h2>{language === "zh" ? "AI 赛场决策引擎" : "AI match decision engine"}</h2>
+            <p>
+              {language === "zh"
+                ? "Scraper、Quant、Strat & Exec 三个 Agent 持续交换情报、链上赔率和风险预算，最后把动作落到 X Layer 可验证交易。"
+                : "Scraper, Quant, and Strat & Exec agents exchange intelligence, on-chain odds, and risk budget before committing actions to verifiable X Layer transactions."}
+            </p>
+          </div>
+          <div className="warScoreDial" style={{ "--score": `${autonomyScore}%` } as React.CSSProperties}>
+            <strong>{autonomyScore}</strong>
+            <span>{language === "zh" ? "自治评分" : "autonomy"}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="agentMatrix panelSurface">
+        <PanelTitle icon={<Network size={18} />} label={language === "zh" ? "Agent 协作日志" : "Agent collaboration log"} />
+        <div className="agentRows">
+          {warRoomEvents.map((event, index) => (
+            <div className={`agentRow ${event.tone} ${index === activeAgentIndex ? "active" : ""}`} key={event.role.en}>
+              <div className="agentNode">
+                <strong>{event.agent[language]}</strong>
+                <span>{event.role[language]}</span>
+              </div>
+              <div className="agentNarrative">
+                <strong>{event.title[language]}</strong>
+                <p>{event.detail[language]}</p>
+              </div>
+              <div className="agentSignal">
+                <span>{event.signal[language]}</span>
+                <strong>{event.metric}</strong>
+                <small>{event.confidence}%</small>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="oraclePanel panelSurface">
+        <PanelTitle icon={<ScanEye size={18} />} label={language === "zh" ? "多模态 Oracle 验证" : "Multimodal oracle verification"} />
+        <div className="oracleStrip">
+          {oracleSignals.map((signal) => (
+            <div className="oracleCard" key={signal.label.en}>
+              <div className="oracleIcon">
+                {signal.confidence >= 100 ? <Link2 size={18} /> : signal.label.en === "Image evidence" ? <FileImage size={18} /> : <Radar size={18} />}
+              </div>
+              <strong>{signal.label[language]}</strong>
+              <p>{signal.detail[language]}</p>
+              <span>{signal.source[language]}</span>
+              <meter min="0" max="100" value={signal.confidence} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="strategyPanel panelSurface">
+        <PanelTitle icon={<Sparkles size={18} />} label={language === "zh" ? "策略推演与执行" : "Strategy simulation and execution"} />
+        <div className="strategyTicket">
+          <StatTile label={language === "zh" ? "当前 Agent" : "Active agent"} value={activeAgent.role[language]} />
+          <StatTile label={language === "zh" ? "建议方向" : "Suggested side"} value={outcomeCopy[language][selectedOutcome]} />
+          <StatTile label={language === "zh" ? "本地 Hook 费率" : "Local Hook fee"} value={`${feeBps} bps`} />
+          <StatTile label={language === "zh" ? "链上 Hook 报价" : "On-chain Hook quote"} value={`${chainQuote.feeBps} bps`} />
+        </div>
+        <div className="decisionBar">
+          <span>{language === "zh" ? "策略置信度" : "Strategy confidence"}</span>
+          <strong>{strategyConfidence}%</strong>
+          <i style={{ width: `${strategyConfidence}%` }} />
+        </div>
+        <p className="walletNote">
+          {language === "zh"
+            ? "当前版本在前端演示自治决策链路；真实执行仍通过链上按钮和钱包确认完成，避免把未接入的后端 Agent 冒充为真实资金托管。"
+            : "This version demonstrates the autonomous decision loop in the frontend; real execution still goes through the on-chain buttons and wallet confirmation, so no unwired backend agent is misrepresented as fund custody."}
+        </p>
+      </section>
+
+      <section className="growthPanel panelSurface">
+        <PanelTitle icon={<MessageCircle size={18} />} label={language === "zh" ? "零摩擦流量入口" : "Zero-friction growth surface"} />
+        <div className="modeSwitch">
+          <button type="button" className={socialMode === "farcaster" ? "active" : ""} onClick={() => setSocialMode("farcaster")}>
+            Farcaster
+          </button>
+          <button type="button" className={socialMode === "telegram" ? "active" : ""} onClick={() => setSocialMode("telegram")}>
+            Telegram
+          </button>
+        </div>
+        <div className="socialFrameMock">
+          <div>
+            <span>{socialMode === "farcaster" ? "Frame" : "Mini App"}</span>
+            <strong>{followCopy}</strong>
+            <p>
+              {language === "zh"
+                ? "用户不需要理解 RPC、Gas 或合约地址；AA 钱包和 Paymaster 让第一次点击就能产生 X Layer 行为。"
+                : "Users do not need to understand RPCs, gas, or contract addresses; AA wallets and a Paymaster turn the first tap into X Layer activity."}
+            </p>
+          </div>
+          <button type="button">{language === "zh" ? "跟单 AI 策略" : "Follow AI strategy"}</button>
+        </div>
+        <div className="aaChecklist">
+          <StatusPill label={language === "zh" ? "社交登录钱包" : "Social-login wallet"} active />
+          <StatusPill label={language === "zh" ? "Gas 代付" : "Gas sponsorship"} active={walletReady} />
+          <StatusPill label={language === "zh" ? "动态徽章 NFT" : "Dynamic badge NFT"} active />
+        </div>
+      </section>
+
+      <section className="badgePanel panelSurface">
+        <PanelTitle icon={<Trophy size={18} />} label={language === "zh" ? "动态资产与战力榜" : "Dynamic assets and leaderboard"} />
+        <div className="badgeCard">
+          <span>{language === "zh" ? "当前头衔" : "Current title"}</span>
+          <strong>{badge.label[language]}</strong>
+          <p>
+            {language === "zh"
+              ? `预测战力 ${badge.score}/100，随跟单命中率、链上交易和 Oracle 结算结果动态升级。`
+              : `Prediction power ${badge.score}/100, upgraded by follow accuracy, on-chain transactions, and oracle settlement results.`}
+          </p>
+        </div>
+      </section>
+
+      <section className="proofPanel panelSurface">
+        <PanelTitle icon={<ExternalLink size={18} />} label={language === "zh" ? "链上证明闭环" : "On-chain proof loop"} />
+        <div className="proofLinks">
+          <a href={`${explorerBase}/tx/${explorerTx}`} target="_blank" rel="noreferrer">
+            <span>{language === "zh" ? "已验证 Hook 测试交易" : "Verified Hook test transaction"}</span>
+            <strong>{shortHash(explorerTx)}</strong>
+            <ArrowUpRight size={16} />
+          </a>
+          <a href={`${explorerBase}/address/${deployment.contracts.WorldCupMarketFactory}`} target="_blank" rel="noreferrer">
+            <span>{language === "zh" ? "市场工厂合约" : "Market factory contract"}</span>
+            <strong>{shortHash(deployment.contracts.WorldCupMarketFactory)}</strong>
+            <ArrowUpRight size={16} />
+          </a>
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function StatusPill({ label, active }: { label: string; active: boolean }) {
+  return (
+    <div className={`statusPill ${active ? "active" : ""}`}>
+      <span />
+      <strong>{label}</strong>
+    </div>
   );
 }
 

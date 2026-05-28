@@ -7,8 +7,9 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
+    "validate:deployment": "node tools/validate-deployment.mjs",
     "test:contracts": "forge test -vvv",
-    "test": "npm run test:contracts && npm run build"
+    "test": "npm run validate:deployment && npm run test:contracts && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
