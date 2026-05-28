@@ -1,0 +1,29 @@
+{
+  "network": "X Layer testnet",
+  "chainId": 1952,
+  "rpcUrl": "https://testrpc.xlayer.tech/terigon",
+  "deployer": "0x810958f166D388a19Aab9C145269954671C789b6",
+  "matchId": "0xe3e84d73353db6ea0d3611f8ec51960d5b0e4355bb9b3d658156a3090882e479",
+  "contracts": {
+    "MatchOracleMock": "0x033de6d9ead7ea61e38e455f11cdbc300b528ae9",
+    "WorldCupMarketFactory": "0x4b24eb9ae137eccd17bf3b653caa6a303156c40f",
+    "MatchPulseHook": "0x0a3f08bf50ac0c2dc82e3c759afd3ceb2634ef9b",
+    "SimulatedPoolManager": "0x6f349a7fe7307f9ec90dd4654cb0ca531e99e59c"
+  },
+  "predictionTokens": {
+    "Argentina": "0xc77B4B3559Cf4C651422f0A14ca427bc05Dd673B",
+    "Draw": "0xB15099Af359E652C542C4d895afEf827Bc5D70E9",
+    "Brazil": "0xDFA804f82AB6ad7aAE54f7c05927C75bc067934e"
+  },
+  "transactions": {
+    "deployMatchOracleMock": "0xc24cb85e202d3eecffa4866214ac8e3e1f39f0bd0f83f203cc061ff8a1c99792",
+    "deployWorldCupMarketFactory": "0x3ac634a0e67dbccceb306e49706d2b5a0f090bd402e7053bb5d99da7839e1a42",
+    "deployMatchPulseHook": "0xa7a26637119eff603d764730d641ee335a27f05d6b5f3420daeb1f2f3bdf1481",
+    "deploySimulatedPoolManager": "0x2d69a65ff7455b704419e8c7f598e643b47536ed33e98b96e0fcf0149743bb33",
+    "setPoolManager": "0x127b844ba2752d319c04b5fbda48a953de18becea50929912b2f5a5d50b36ab1",
+    "createMatch": "0x19126ad6f9edea657de1f267e861633cf39fa163d680033fab06500c89ec1ef4",
+    "createMarket": "0x67a72cf81d355360aa281368f7eadf13174a627447beb154dee568df0ccb624b",
+    "createPool": "0xe03ba5028da2f63004ae736aefbc25ae348129272a7570a27e916e4eef9f1327"
+  },
+  "explorer": "https://www.okx.com/web3/explorer/xlayer-test"
+}

@@ -1,0 +1,492 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f5f7f2;
+  color: #132019;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.shell {
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1240px;
+  margin: 0 auto 22px;
+}
+
+.eyebrow,
+.panelTitle,
+.chainBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eyebrow {
+  color: #236c5c;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  margin-top: 5px;
+  font-size: 54px;
+  line-height: 0.95;
+  color: #15221a;
+}
+
+.topbar p {
+  max-width: 720px;
+  margin-top: 12px;
+  color: #56645d;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.chainBadge {
+  min-width: 220px;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #d2dbd2;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 45px rgba(37, 49, 40, 0.08);
+}
+
+.chainBadge span {
+  color: #52615a;
+  font-size: 13px;
+}
+
+.chainBadge strong {
+  color: #0d6d56;
+  font-size: 14px;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
+  gap: 18px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.matchBoard,
+.hookPanel,
+.tradePanel,
+.agentPanel,
+.logPanel {
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 50px rgba(34, 47, 38, 0.08);
+}
+
+.matchBoard {
+  min-height: 560px;
+  padding: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.96)),
+    radial-gradient(circle at 25% 25%, rgba(64, 145, 105, 0.18), transparent 30%),
+    linear-gradient(120deg, #e5efe4, #ffffff);
+}
+
+.boardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.boardHeader span,
+.eventCard span,
+.ticket span,
+.stakeControl span,
+.team span {
+  color: #69776f;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.boardHeader h2 {
+  margin-top: 7px;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.iconButton {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #cad5cb;
+  border-radius: 8px;
+  background: #f8faf7;
+  color: #1c5f4f;
+}
+
+.scoreStrip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.team,
+.clock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 160px;
+  border: 1px solid #ccd7ce;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  text-align: center;
+}
+
+.team.active {
+  border-color: #3b9a74;
+  box-shadow: inset 0 0 0 1px #3b9a74;
+}
+
+.team strong {
+  margin-top: 12px;
+  font-size: 76px;
+  line-height: 0.9;
+}
+
+.clock {
+  color: #ffffff;
+  background: #183b34;
+}
+
+.clock strong {
+  font-size: 34px;
+}
+
+.clock span {
+  margin-top: 6px;
+  color: #a8d8c5;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.eventCard {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 8px;
+  background: #17241e;
+  color: #ffffff;
+}
+
+.eventCard strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 20px;
+}
+
+.eventCard p {
+  margin-top: 8px;
+  color: #c4d4cb;
+  line-height: 1.42;
+}
+
+.outcomeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.outcome {
+  min-height: 128px;
+  padding: 16px;
+  border: 1px solid #ccd8d0;
+  border-radius: 8px;
+  background: #fbfcfa;
+  color: #17241e;
+  text-align: left;
+}
+
+.outcome.selected {
+  border-color: #206e58;
+  background: #eef8f1;
+}
+
+.outcome span {
+  display: block;
+  color: #4e5f55;
+  font-weight: 800;
+}
+
+.outcome strong {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 32px;
+}
+
+.outcome small {
+  color: #637369;
+  font-size: 13px;
+}
+
+.hookPanel,
+.tradePanel,
+.agentPanel,
+.logPanel {
+  padding: 18px;
+}
+
+.panelTitle {
+  color: #174b41;
+  font-size: 14px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.feeDial {
+  --angle: 50deg;
+  display: grid;
+  width: min(220px, 100%);
+  aspect-ratio: 1;
+  place-items: center;
+  margin: 22px auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #ffffff 0 55%, transparent 56%),
+    conic-gradient(#ef6a3a var(--angle), #e5ebe5 0);
+}
+
+.feeDial div {
+  display: grid;
+  place-items: center;
+}
+
+.feeDial span {
+  font-size: 58px;
+  font-weight: 900;
+  line-height: 0.95;
+}
+
+.feeDial small {
+  color: #6a766e;
+  font-weight: 800;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.metrics dt {
+  color: #6a776f;
+  font-size: 13px;
+}
+
+.metrics dd {
+  margin: 0;
+  color: #16231d;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.guardrail {
+  display: flex;
+  gap: 9px;
+  margin-top: 18px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #edf7ef;
+  color: #285b46;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tradePanel,
+.agentPanel,
+.logPanel {
+  min-height: 220px;
+}
+
+.stakeControl {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+input[type="range"] {
+  accent-color: #1d765c;
+}
+
+.ticket {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.ticket div {
+  padding: 13px;
+  border: 1px solid #dbe3dc;
+  border-radius: 8px;
+  background: #fafbf9;
+}
+
+.ticket strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 20px;
+}
+
+.primaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #123f35;
+  color: #ffffff;
+  font-weight: 850;
+}
+
+.agentBubble {
+  margin-top: 18px;
+  min-height: 106px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f1f4ef;
+  color: #26362e;
+  line-height: 1.48;
+}
+
+.agentActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.agentActions span {
+  padding: 10px 8px;
+  border: 1px solid #d8e0d8;
+  border-radius: 8px;
+  color: #385146;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.logs {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.log {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border-left: 4px solid #5ea176;
+  border-radius: 6px;
+  background: #f7faf6;
+}
+
+.log.warn {
+  border-left-color: #d69a2d;
+}
+
+.log.hot {
+  border-left-color: #e2673b;
+}
+
+.log strong {
+  font-size: 13px;
+}
+
+.log span {
+  color: #5d6d64;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+@media (max-width: 980px) {
+  .shell {
+    padding: 18px;
+  }
+
+  .topbar,
+  .mainGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 42px;
+  }
+}
+
+@media (max-width: 640px) {
+  .scoreStrip,
+  .outcomeGrid,
+  .ticket,
+  .agentActions {
+    grid-template-columns: 1fr;
+  }
+
+  .team,
+  .clock {
+    min-height: 108px;
+  }
+
+  .team strong {
+    font-size: 52px;
+  }
+}
