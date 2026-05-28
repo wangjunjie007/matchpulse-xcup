@@ -6,8 +6,9 @@ Live demo: https://wangjunjie007.github.io/matchpulse-xcup/
 
 Demo videos:
 
-- [GitHub-preview English narrated walkthrough, 720p/30fps](docs/matchpulse-xcup-demo-en.mp4)
-- [GitHub-preview Chinese narrated walkthrough, 720p/30fps](docs/matchpulse-xcup-demo-zh.mp4)
+- [Browser-playable video page](https://wangjunjie007.github.io/matchpulse-xcup/demo-videos.html)
+- [English narrated walkthrough, 720p/30fps MP4](https://wangjunjie007.github.io/matchpulse-xcup/videos/matchpulse-xcup-demo-en.mp4)
+- [Chinese narrated walkthrough, 720p/30fps MP4](https://wangjunjie007.github.io/matchpulse-xcup/videos/matchpulse-xcup-demo-zh.mp4)
 - Legacy/default video path: [docs/matchpulse-xcup-demo.mp4](docs/matchpulse-xcup-demo.mp4)
 
 ## Why This Fits X Cup
