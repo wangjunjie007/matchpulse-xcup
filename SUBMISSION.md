@@ -40,6 +40,8 @@ Outcome tokens:
 - A deployed X Layer testnet market for Argentina vs Brazil.
 - A React demo that reads deployment addresses from `deployments/xlayer-testnet-1952.json`.
 - Wallet connection, X Layer testnet switching, and a live write button that calls `mintCompleteSet(matchId)` on the deployed factory.
+- Live reads from `MatchPulseHook.quoteFee(matchId, 30)`, Hook `poolMetrics(poolId)`, and ERC20 `balanceOf` for the three outcome tokens.
+- A real X Layer testnet Hook test transaction button that calls `SimulatedPoolManager.simulateSwap(poolId, ...)` and triggers Hook `beforeSwap` / `afterSwap` on-chain.
 
 ## Hook Fee Model
 
@@ -61,10 +63,15 @@ Base fee starts at `30 bps` and is capped at `300 bps`.
 2. Show the X Layer deployment panel and contract addresses.
 3. Click the refresh button to advance match events.
 4. Watch the Hook fee move from pre-match baseline to live volatility pricing.
-5. Simulate a swap and show the event log.
+5. Use the local simulation button only to show frontend market movement.
 6. Connect a wallet on X Layer testnet.
 7. Click `Mint complete set` to write to the deployed testnet factory.
-8. Open the transaction in the OKX X Layer testnet explorer.
+8. Click the on-chain Hook test transaction to trigger `SimulatedPoolManager.simulateSwap`.
+9. Open the transactions in the OKX X Layer testnet explorer.
+
+Verified Hook test transaction:
+
+`0x26f4ca83e5898034a046ecb2f35b5a1192fe24eaec53a9d393a7d8d4c123892b`
 
 ## Why It Matters
 
@@ -73,6 +80,8 @@ Prediction markets face toxic order flow when real-world events suddenly change 
 ## Current Limitation
 
 The MVP uses `SimulatedPoolManager` so judges can run and inspect the full Hook lifecycle without relying on an external Uniswap v4 deployment package. The Hook interface and flow are intentionally aligned with v4-style `beforeSwap` and `afterSwap` callbacks. The next production step is replacing the simulated manager with the official Uniswap v4 PoolManager and required hook permission address flow.
+
+The frontend explicitly labels local-only simulation separately from real testnet writes. Real testnet writes currently include `mintCompleteSet` and `simulateSwap`; real reads include Hook quote, pool metrics and outcome-token balances.
 
 ## Validation
 

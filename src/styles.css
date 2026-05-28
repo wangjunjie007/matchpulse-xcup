@@ -557,6 +557,35 @@ h1 {
   line-height: 1.35;
 }
 
+.chainQuoteBox {
+  display: grid;
+  gap: 5px;
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid #cfe0d4;
+  border-radius: 8px;
+  background: #f4fbf5;
+}
+
+.chainQuoteBox span {
+  color: #557064;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.chainQuoteBox strong {
+  color: #173f35;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.chainQuoteBox small {
+  color: #617368;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .chartPanel,
 .tradePanel,
 .agentPanel,
@@ -735,6 +764,23 @@ input[type="range"] {
   font-size: 12px;
   font-weight: 850;
   text-align: center;
+}
+
+.agentActions button {
+  min-height: 38px;
+  padding: 10px 8px;
+  border: 1px solid #d8e0d8;
+  border-radius: 8px;
+  background: #f7faf6;
+  color: #7a877f;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: center;
+  cursor: not-allowed;
+}
+
+.chainReadPanel {
+  padding: 18px;
 }
 
 .logs {

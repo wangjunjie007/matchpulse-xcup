@@ -36,7 +36,7 @@ import {
   YAxis
 } from "recharts";
 import { Toaster, toast } from "sonner";
-import { createWalletClient, custom, formatEther, parseEther } from "viem";
+import { createPublicClient, createWalletClient, custom, formatEther, formatUnits, http, parseEther } from "viem";
 import deployment from "../deployments/xlayer-testnet-1952.json";
 import { MatchState, baseFeeBps, quoteFee } from "./lib/feeModel";
 import "./styles.css";
@@ -51,6 +51,22 @@ type EventLog = {
   label: string;
   detail: string;
   tone: "ok" | "warn" | "hot";
+};
+
+type ChainQuote = {
+  feeBps: number;
+  volatilityScore: number;
+  reason: string;
+  source: "chain" | "local";
+};
+
+type TokenBalances = Record<Outcome, string>;
+
+type PoolMetricsState = {
+  totalVolumeUsd: string;
+  swapCount: string;
+  lastFeeBps: string;
+  lastReason: string;
 };
 
 type EthereumProvider = {
@@ -90,7 +106,72 @@ const factoryAbi = [
   }
 ] as const;
 
+const hookAbi = [
+  {
+    type: "function",
+    name: "quoteFee",
+    stateMutability: "view",
+    inputs: [
+      { name: "matchId", type: "bytes32" },
+      { name: "baseFeeBps", type: "uint24" }
+    ],
+    outputs: [
+      { name: "feeBps", type: "uint24" },
+      { name: "volatilityScore", type: "uint256" },
+      { name: "reason", type: "string" }
+    ]
+  },
+  {
+    type: "function",
+    name: "poolMetrics",
+    stateMutability: "view",
+    inputs: [{ name: "poolId", type: "bytes32" }],
+    outputs: [
+      { name: "totalVolumeUsd", type: "uint256" },
+      { name: "swapCount", type: "uint256" },
+      { name: "lastFeeBps", type: "uint24" },
+      { name: "lastVolatilityScore", type: "uint256" },
+      { name: "lastUpdated", type: "uint64" },
+      { name: "lastReason", type: "string" }
+    ]
+  }
+] as const;
+
+const poolManagerAbi = [
+  {
+    type: "function",
+    name: "simulateSwap",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "poolId", type: "bytes32" },
+      { name: "zeroForOne", type: "bool" },
+      { name: "amountSpecified", type: "int256" },
+      { name: "volumeUsd", type: "uint256" }
+    ],
+    outputs: [
+      { name: "feeBps", type: "uint24" },
+      { name: "volatilityScore", type: "uint256" },
+      { name: "reason", type: "string" }
+    ]
+  }
+] as const;
+
+const erc20Abi = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "balance", type: "uint256" }]
+  }
+] as const;
+
 const mintValueEth = "0.001";
+const poolId = "0x0175cb519b77203a16fff09cd0e584e7432888376982fa289402b45b04507430" as HexValue;
+const publicClient = createPublicClient({
+  chain: xLayerTestnet,
+  transport: http(deployment.rpcUrl)
+});
 
 const copy = {
   zh: {
@@ -165,6 +246,21 @@ const copy = {
     walletFailed: "钱包请求失败。",
     copied: "已复制",
     copyAddress: "复制地址",
+    localOnly: "本地模拟",
+    localOnlyNote: "这个按钮只更新前端价格和日志，不发链上交易。",
+    chainQuote: "链上 Hook 报价",
+    chainQuoteSource: "数据来自 X Layer testnet 的 MatchPulseHook.quoteFee",
+    refreshChainData: "刷新链上数据",
+    chainHookTest: "链上 Hook 测试交易",
+    chainHookTestNote: "调用 SimulatedPoolManager.simulateSwap，在链上触发 Hook beforeSwap / afterSwap。",
+    hookTestSubmitted: "链上 Hook 测试交易已提交",
+    tokenBalances: "用户结果 Token 余额",
+    noWalletForBalances: "连接钱包后显示 ARG / DRAW / BRA 余额。",
+    lastPoolMetrics: "链上池指标",
+    swapCount: "Swap 次数",
+    totalVolume: "累计量",
+    lastFee: "最近费率",
+    disabledFeature: "演示占位，未接真实后端",
     whyItMatters: "为什么重要",
     whyText: "体育预测市场会在进球、红牌、点球和终场前反转时遭遇极高波动。MatchPulse 把这些信号放进 Hook 层，动态提高交易成本，降低 LP 被 toxic flow 冲击的风险。",
     validation: "验证结果",
@@ -265,6 +361,21 @@ const copy = {
     walletFailed: "Wallet request failed.",
     copied: "Copied",
     copyAddress: "Copy address",
+    localOnly: "Local simulation",
+    localOnlyNote: "This button only updates frontend price and logs. It does not send a transaction.",
+    chainQuote: "On-chain Hook quote",
+    chainQuoteSource: "Read from MatchPulseHook.quoteFee on X Layer testnet",
+    refreshChainData: "Refresh chain data",
+    chainHookTest: "On-chain Hook test tx",
+    chainHookTestNote: "Calls SimulatedPoolManager.simulateSwap and triggers Hook beforeSwap / afterSwap on-chain.",
+    hookTestSubmitted: "On-chain Hook test submitted",
+    tokenBalances: "User outcome token balances",
+    noWalletForBalances: "Connect wallet to show ARG / DRAW / BRA balances.",
+    lastPoolMetrics: "On-chain pool metrics",
+    swapCount: "Swap count",
+    totalVolume: "Total volume",
+    lastFee: "Last fee",
+    disabledFeature: "Demo placeholder, no backend action wired",
     whyItMatters: "Why it matters",
     whyText: "Sports prediction markets face extreme volatility during goals, red cards, penalties and late reversals. MatchPulse moves those signals into the Hook layer to reduce LP exposure to toxic flow.",
     validation: "Validation",
@@ -355,8 +466,18 @@ function App() {
   const [walletChainId, setWalletChainId] = useState<number | null>(null);
   const [walletBalance, setWalletBalance] = useState<string>("--");
   const [txHash, setTxHash] = useState<HexValue | null>(null);
+  const [hookTxHash, setHookTxHash] = useState<HexValue | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [chainQuote, setChainQuote] = useState<ChainQuote>({ feeBps: 30, volatilityScore: 0, reason: "scheduled baseline", source: "local" });
+  const [tokenBalances, setTokenBalances] = useState<TokenBalances>({ Argentina: "--", Draw: "--", Brazil: "--" });
+  const [poolMetricsState, setPoolMetricsState] = useState<PoolMetricsState>({
+    totalVolumeUsd: "--",
+    swapCount: "--",
+    lastFeeBps: "--",
+    lastReason: "--"
+  });
+  const [chainReadBusy, setChainReadBusy] = useState(false);
   const [logs, setLogs] = useState<EventLog[]>(initialLogs("zh"));
 
   const t = copy[language];
@@ -399,9 +520,14 @@ function App() {
   }, [language]);
 
   useEffect(() => {
+    void refreshChainData();
+  }, []);
+
+  useEffect(() => {
     const provider = getWalletProvider();
     if (!provider || !walletAddress) {
       setWalletBalance("--");
+      setTokenBalances({ Argentina: "--", Draw: "--", Brazil: "--" });
       return;
     }
 
@@ -411,6 +537,7 @@ function App() {
         if (typeof balance === "string") setWalletBalance(Number(formatEther(BigInt(balance))).toFixed(4));
       })
       .catch(() => setWalletBalance("--"));
+    void refreshTokenBalances(walletAddress);
   }, [walletAddress, walletChainId]);
 
   function advance() {
@@ -458,6 +585,78 @@ function App() {
     );
   }
 
+  async function refreshChainData() {
+    setChainReadBusy(true);
+    try {
+      const [quote, metrics] = await Promise.all([
+        publicClient.readContract({
+          address: deployment.contracts.MatchPulseHook as HexAddress,
+          abi: hookAbi,
+          functionName: "quoteFee",
+          args: [deployment.matchId as HexValue, baseFeeBps]
+        }),
+        publicClient.readContract({
+          address: deployment.contracts.MatchPulseHook as HexAddress,
+          abi: hookAbi,
+          functionName: "poolMetrics",
+          args: [poolId]
+        })
+      ]);
+      setChainQuote({
+        feeBps: Number(quote[0]),
+        volatilityScore: Number(quote[1]),
+        reason: quote[2],
+        source: "chain"
+      });
+      setPoolMetricsState({
+        totalVolumeUsd: metrics[0].toString(),
+        swapCount: metrics[1].toString(),
+        lastFeeBps: metrics[2].toString(),
+        lastReason: metrics[5] || "--"
+      });
+      if (walletAddress) await refreshTokenBalances(walletAddress);
+    } catch (error) {
+      toast.error(readError(error, language));
+    } finally {
+      setChainReadBusy(false);
+    }
+  }
+
+  async function refreshTokenBalances(address: HexAddress) {
+    try {
+      const results = await publicClient.multicall({
+        contracts: [
+          {
+            address: deployment.predictionTokens.Argentina as HexAddress,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [address]
+          },
+          {
+            address: deployment.predictionTokens.Draw as HexAddress,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [address]
+          },
+          {
+            address: deployment.predictionTokens.Brazil as HexAddress,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [address]
+          }
+        ],
+        allowFailure: false
+      });
+      setTokenBalances({
+        Argentina: formatUnits(results[0], 18),
+        Draw: formatUnits(results[1], 18),
+        Brazil: formatUnits(results[2], 18)
+      });
+    } catch {
+      setTokenBalances({ Argentina: "--", Draw: "--", Brazil: "--" });
+    }
+  }
+
   async function connectWallet() {
     setWalletError(null);
     const provider = getWalletProvider();
@@ -473,6 +672,7 @@ function App() {
       const chainId = (await provider.request({ method: "eth_chainId" })) as string;
       setWalletAddress((accounts[0] as HexAddress) ?? null);
       setWalletChainId(Number.parseInt(chainId, 16));
+      if (accounts[0]) await refreshTokenBalances(accounts[0] as HexAddress);
       toast.success(t.connected, { id, description: shortHash(accounts[0] ?? "") });
     } catch (error) {
       const message = readError(error, language);
@@ -559,6 +759,8 @@ function App() {
       });
       setTxHash(hash);
       toast.success(t.submitted, { id, description: shortHash(hash) });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refreshChainData();
       const tone: EventLog["tone"] = "ok";
       setLogs((current) =>
         [
@@ -566,6 +768,63 @@ function App() {
             id: Date.now(),
             label: t.xLayerWrite,
             detail: `${t.submitted}: ${shortHash(hash)}.`,
+            tone
+          },
+          ...current
+        ].slice(0, 6)
+      );
+    } catch (error) {
+      const message = readError(error, language);
+      setWalletError(message);
+      toast.error(message, { id });
+    } finally {
+      setWalletBusy(false);
+    }
+  }
+
+  async function simulateHookOnChain() {
+    setWalletError(null);
+    setHookTxHash(null);
+    const provider = getWalletProvider();
+    if (!provider) {
+      setWalletError(t.noWallet);
+      toast.error(t.noWallet);
+      return;
+    }
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+    if (walletChainId !== deployment.chainId) {
+      await switchToXLayer();
+      return;
+    }
+
+    setWalletBusy(true);
+    const id = toast.loading(t.chainHookTest);
+    try {
+      const client = createWalletClient({
+        account: walletAddress,
+        chain: xLayerTestnet,
+        transport: custom(provider)
+      });
+      const hash = await client.writeContract({
+        address: deployment.contracts.SimulatedPoolManager as HexAddress,
+        abi: poolManagerAbi,
+        functionName: "simulateSwap",
+        args: [poolId, selectedOutcome !== "Brazil", parseEther("1"), BigInt(Math.max(1, Math.round(stake)))]
+      });
+      setHookTxHash(hash);
+      toast.success(t.hookTestSubmitted, { id, description: shortHash(hash) });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refreshChainData();
+      const tone: EventLog["tone"] = "ok";
+      setLogs((current) =>
+        [
+          {
+            id: Date.now(),
+            label: t.chainHookTest,
+            detail: `${t.hookTestSubmitted}: ${shortHash(hash)}.`,
             tone
           },
           ...current
@@ -716,6 +975,11 @@ function App() {
                   <Metric label={t.volatilityScore} value={`${fee.volatilityScore}/100`} />
                   <Metric label={t.reason} value={translateFeeReason(fee.reason, language)} />
                 </dl>
+                <div className="chainQuoteBox">
+                  <span>{t.chainQuote}</span>
+                  <strong>{chainQuote.feeBps} bps</strong>
+                  <small>{translateFeeReason(chainQuote.reason, language)} · {t.chainQuoteSource}</small>
+                </div>
                 <div className="guardrail">
                   <ShieldCheck size={18} />
                   <span>{t.guardrail}</span>
@@ -759,17 +1023,18 @@ function App() {
                 </div>
                 <button type="button" className="primaryButton" onClick={() => trade(selectedOutcome)}>
                   <Activity size={18} />
-                  {t.simulateSwap}
+                  {t.localOnly}: {t.simulateSwap}
                 </button>
+                <p className="walletNote">{t.localOnlyNote}</p>
               </section>
 
               <section className="agentPanel panelSurface">
                 <PanelTitle icon={<Bot size={18} />} label={t.agent} />
                 <div className="agentBubble">{agentCopy(match.state, fee.feeBps, maxOutcome, language)}</div>
                 <div className="agentActions">
-                  <span>{t.createMatch}</span>
-                  <span>{t.explainFee}</span>
-                  <span>{t.publishRecap}</span>
+                  <button type="button" disabled title={t.disabledFeature}>{t.createMatch}</button>
+                  <button type="button" disabled title={t.disabledFeature}>{t.explainFee}</button>
+                  <button type="button" disabled title={t.disabledFeature}>{t.publishRecap}</button>
                 </div>
               </section>
 
@@ -810,6 +1075,14 @@ function App() {
                   <Zap size={18} />
                   {walletBusy ? t.waitingWallet : `${t.mintCompleteSet} (${mintValueEth} OKB)`}
                 </button>
+                <button type="button" className="secondaryButton fullWidth" onClick={simulateHookOnChain} disabled={walletBusy}>
+                  <Activity size={17} />
+                  {t.chainHookTest}
+                </button>
+                <button type="button" className="secondaryButton fullWidth" onClick={refreshChainData} disabled={chainReadBusy}>
+                  <RefreshCw size={17} />
+                  {chainReadBusy ? t.waiting : t.refreshChainData}
+                </button>
                 <p className="walletNote">{t.walletNote}</p>
                 {walletError ? <div className="walletError">{walletError}</div> : null}
                 {txHash ? (
@@ -817,6 +1090,31 @@ function App() {
                     {t.viewTransaction} <ExternalLink size={14} />
                   </a>
                 ) : null}
+                {hookTxHash ? (
+                  <a className="txLink" href={`${explorerBase}/tx/${hookTxHash}`} target="_blank" rel="noreferrer">
+                    {t.chainHookTest} <ExternalLink size={14} />
+                  </a>
+                ) : null}
+              </section>
+
+              <section className="panelSurface chainReadPanel">
+                <PanelTitle icon={<Gauge size={18} />} label={t.tokenBalances} />
+                <div className="walletStatus">
+                  <StatTile label={outcomeCopy[language].Argentina} value={tokenBalances.Argentina === "--" ? "--" : Number(tokenBalances.Argentina).toFixed(4)} />
+                  <StatTile label={outcomeCopy[language].Draw} value={tokenBalances.Draw === "--" ? "--" : Number(tokenBalances.Draw).toFixed(4)} />
+                  <StatTile label={outcomeCopy[language].Brazil} value={tokenBalances.Brazil === "--" ? "--" : Number(tokenBalances.Brazil).toFixed(4)} />
+                </div>
+                <p className="walletNote">{walletAddress ? t.chainQuoteSource : t.noWalletForBalances}</p>
+              </section>
+
+              <section className="panelSurface chainReadPanel">
+                <PanelTitle icon={<BarChart3 size={18} />} label={t.lastPoolMetrics} />
+                <div className="walletStatus">
+                  <StatTile label={t.swapCount} value={poolMetricsState.swapCount} />
+                  <StatTile label={t.totalVolume} value={poolMetricsState.totalVolumeUsd} />
+                  <StatTile label={t.lastFee} value={poolMetricsState.lastFeeBps === "--" ? "--" : `${poolMetricsState.lastFeeBps} bps`} />
+                </div>
+                <p className="walletNote">{poolMetricsState.lastReason === "--" ? t.chainHookTestNote : translateFeeReason(poolMetricsState.lastReason, language)}</p>
               </section>
 
               <DeploymentPanel language={language} />

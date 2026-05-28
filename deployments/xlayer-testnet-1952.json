@@ -4,6 +4,7 @@
   "rpcUrl": "https://testrpc.xlayer.tech/terigon",
   "deployer": "0x810958f166D388a19Aab9C145269954671C789b6",
   "matchId": "0xe3e84d73353db6ea0d3611f8ec51960d5b0e4355bb9b3d658156a3090882e479",
+  "poolId": "0x0175cb519b77203a16fff09cd0e584e7432888376982fa289402b45b04507430",
   "contracts": {
     "MatchOracleMock": "0x033de6d9ead7ea61e38e455f11cdbc300b528ae9",
     "WorldCupMarketFactory": "0x4b24eb9ae137eccd17bf3b653caa6a303156c40f",
@@ -23,7 +24,8 @@
     "setPoolManager": "0x127b844ba2752d319c04b5fbda48a953de18becea50929912b2f5a5d50b36ab1",
     "createMatch": "0x19126ad6f9edea657de1f267e861633cf39fa163d680033fab06500c89ec1ef4",
     "createMarket": "0x67a72cf81d355360aa281368f7eadf13174a627447beb154dee568df0ccb624b",
-    "createPool": "0xe03ba5028da2f63004ae736aefbc25ae348129272a7570a27e916e4eef9f1327"
+    "createPool": "0xe03ba5028da2f63004ae736aefbc25ae348129272a7570a27e916e4eef9f1327",
+    "verifiedSimulatedSwap": "0x26f4ca83e5898034a046ecb2f35b5a1192fe24eaec53a9d393a7d8d4c123892b"
   },
   "explorer": "https://www.okx.com/web3/explorer/xlayer-test"
 }
