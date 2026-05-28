@@ -2,6 +2,8 @@
 
 MatchPulse is a World Cup prediction market MVP for X Layer. The product combines outcome tokens, a match-state oracle, and a Uniswap v4-style Hook that dynamically prices live match volatility into swap fees.
 
+Live demo: https://wangjunjie007.github.io/matchpulse-xcup/
+
 ## Why This Fits X Cup
 
 - World Cup native: every pool is tied to a match and its live state.
