@@ -243,6 +243,9 @@ const hookAbi = [
       { name: "swapCount", type: "uint256" },
       { name: "lastFeeBps", type: "uint24" },
       { name: "lastVolatilityScore", type: "uint256" },
+      { name: "lastLiquidityConcentrationBps", type: "uint16" },
+      { name: "lastTickLower", type: "int24" },
+      { name: "lastTickUpper", type: "int24" },
       { name: "lastUpdated", type: "uint64" },
       { name: "lastReason", type: "string" }
     ]
@@ -1050,10 +1053,10 @@ function App() {
         totalVolumeUsd: metrics[0].toString(),
         swapCount: metrics[1].toString(),
         lastFeeBps: metrics[2].toString(),
-        lastLiquidityConcentrationBps: "--",
-        lastTickLower: "--",
-        lastTickUpper: "--",
-        lastReason: metrics[5] || "--"
+        lastLiquidityConcentrationBps: metrics[4].toString(),
+        lastTickLower: metrics[5].toString(),
+        lastTickUpper: metrics[6].toString(),
+        lastReason: metrics[8] || "--"
       });
       setMarketState({
         totalCollateral: formatEther(market[4]),
@@ -1888,9 +1891,11 @@ function App() {
                 <p className="walletNote">
                   {poolMetricsState.lastReason === "--" ? t.chainHookTestNote : translateFeeReason(poolMetricsState.lastReason, language)}
                   {" · "}
-                  {language === "zh"
-                    ? "当前公开部署仍是旧 Hook；新版 TWCL 已在代码和测试中实现，待重新部署后会由事件索引层读取。"
-                    : "The public deployment is still the previous Hook; the new TWCL logic is implemented in code/tests and will be read by the event indexer after redeploy."}
+                  {poolMetricsState.lastTickLower !== "--" && poolMetricsState.lastTickUpper !== "--"
+                    ? `${twclBandLabel}: ${poolMetricsState.lastTickLower} / ${poolMetricsState.lastTickUpper}`
+                    : language === "zh"
+                      ? "新版 TWCL Hook 会在链上交易后写入集中度与 tick 区间。"
+                      : "The TWCL Hook writes concentration and tick band after an on-chain Hook transaction."}
                 </p>
               </section>
 

@@ -145,7 +145,6 @@ X Layer chain IDs:
 
 ## Next Production Steps
 
-- Redeploy the TWCL-enabled Hook to X Layer testnet and update `deployments/xlayer-testnet-1952.json`.
 - Replace `MatchOracleMock` with `TlsSportsOracleAdapter` or a decentralized sports oracle feed.
 - Replace `SimulatedPoolManager` with real Uniswap v4 PoolManager integration or an X Layer-native equivalent.
 - Publish the subgraph in `subgraph/` and add indexing for `BundleMinted`, `MarketSettled`, and `Redeemed`.

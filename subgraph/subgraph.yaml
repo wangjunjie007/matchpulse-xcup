@@ -7,7 +7,7 @@ dataSources:
     name: MatchPulseHook
     network: xlayer-testnet
     source:
-      address: "0x0a3f08bf50ac0c2dc82e3c759afd3ceb2634ef9b"
+      address: "0x035983729d43e55A7E306C9cbE4c728262e3fE3e"
       abi: MatchPulseHook
     mapping:
       kind: ethereum/events

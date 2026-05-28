@@ -19,18 +19,18 @@ MatchPulse is an AI match decision engine on X Layer where a visible multi-agent
 
 | Contract | Address |
 | --- | --- |
-| MatchOracleMock | `0x033de6d9ead7ea61e38e455f11cdbc300b528ae9` |
-| WorldCupMarketFactory | `0x4b24eb9ae137eccd17bf3b653caa6a303156c40f` |
-| MatchPulseHook | `0x0a3f08bf50ac0c2dc82e3c759afd3ceb2634ef9b` |
-| SimulatedPoolManager | `0x6f349a7fe7307f9ec90dd4654cb0ca531e99e59c` |
+| MatchOracleMock | `0xfEbDF3940b697eFa77B7163BC9ff3a0F30053dB4` |
+| WorldCupMarketFactory | `0xf47AFa05191946cC5Ef2C0DA5a90b6B01ea7c121` |
+| MatchPulseHook | `0x035983729d43e55A7E306C9cbE4c728262e3fE3e` |
+| SimulatedPoolManager | `0x8AAf7914Cc6AAA2DB882024a6c61a580A7c50c1b` |
 
 Outcome tokens:
 
 | Outcome | Token |
 | --- | --- |
-| Argentina | `0xc77B4B3559Cf4C651422f0A14ca427bc05Dd673B` |
-| Draw | `0xB15099Af359E652C542C4d895afEf827Bc5D70E9` |
-| Brazil | `0xDFA804f82AB6ad7aAE54f7c05927C75bc067934e` |
+| Argentina | `0x7B147331Ea313bf3B01f521b34bC5600aDd8cf96` |
+| Draw | `0x7C852736C253D7Be0B0914eF1428eA3EF8B652D4` |
+| Brazil | `0x2f57B338dAcEd5F200fb4033BB0350dc1598edF2` |
 
 ## What Was Built
 
@@ -63,8 +63,8 @@ Outcome tokens:
 
 ## Implementation Boundary
 
-- Real today: contracts, TWCL quote logic, TWCL tests, Hook quote reads, pool metrics reads, wallet connection, X Layer switching, minting, Hook test transaction, settlement/redeem UI, deployment explorer links, config validation, CI, Subgraph skeleton, gas report, and public GitHub Pages demo.
-- Current deployed testnet address: still the earlier Hook deployment without the new TWCL storage/events. The frontend keeps old deployed reads compatible and shows the new TWCL model from the upgraded code path until redeploy.
+- Real today: contracts, TWCL quote logic, TWCL tests, Hook quote reads, TWCL pool metrics reads, wallet connection, X Layer switching, minting, Hook test transaction, settlement/redeem UI, deployment explorer links, config validation, CI, Subgraph skeleton, gas report, and public GitHub Pages demo.
+- Current deployed testnet address: upgraded TWCL Hook deployed on X Layer testnet. The verified Hook test transaction emits `LiquidityBandRebalanced` and records `8700 bps` concentration with `[-207, 207]` ticks under late red-card pressure.
 - Demo autonomy today: multi-agent logs, Agent Vault cards, Tweet-to-Trade parser, multimodal evidence stream, Farcaster / Telegram entry surfaces, AA sponsorship state, and dynamic badge progression are frontend product simulations with explicit labels.
 - Production next: redeploy the TWCL Hook, publish the subgraph, connect Scraper to Kimi/Grok/Neynar/Telegram APIs, run Quant/Strat agents in a backend worker, add an AA provider/paymaster, and submit TLSNotary / decentralized sports-oracle evidence on-chain.
 
@@ -113,7 +113,7 @@ The late red-card pressure test verifies `8700 bps` concentration and `[-207, 20
 
 Verified Hook test transaction:
 
-`0x26f4ca83e5898034a046ecb2f35b5a1192fe24eaec53a9d393a7d8d4c123892b`
+`0xd882d17599427cab90c1becbe8b56683eb53f4eb868d45d56e15cb1e69302a72`
 
 ## Why It Matters
 

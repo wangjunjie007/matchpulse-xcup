@@ -6,7 +6,7 @@ This folder contains the indexing surface for MatchPulse Hook events:
 - `LiquidityBandRebalanced`
 - `SwapMeasured`
 
-The current `subgraph.yaml` points at the public X Layer testnet Hook from the submitted demo. After redeploying the TWCL-enabled Hook, update the address and start block before publishing the subgraph.
+The current `subgraph.yaml` points at the TWCL-enabled public X Layer testnet Hook from the submitted demo. Set an exact start block before publishing the subgraph to a hosted indexer.
 
 Production deployment notes:
 
