@@ -98,6 +98,88 @@ h1 {
   font-size: 14px;
 }
 
+.chainActionBar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(260px, auto) minmax(360px, auto);
+  align-items: center;
+  gap: 14px;
+  max-width: 1240px;
+  margin: 0 auto 18px;
+  padding: 14px;
+  border: 1px solid #cbd8ce;
+  border-radius: 8px;
+  background: #132a24;
+  color: #ffffff;
+  box-shadow: 0 16px 50px rgba(34, 47, 38, 0.1);
+}
+
+.chainActionCopy {
+  min-width: 0;
+}
+
+.chainActionCopy span {
+  display: block;
+  color: #9ccfbd;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.chainActionCopy strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chainActionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #d8f2e8;
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.chainActionButtons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.chainActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #f7faf6;
+  color: #183b34;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.chainActionButton.hot {
+  background: #ef6a3a;
+  color: #ffffff;
+}
+
+.chainActionButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .mainGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
@@ -586,6 +668,7 @@ input[type="range"] {
   }
 
   .topbar,
+  .chainActionBar,
   .mainGrid {
     display: grid;
     grid-template-columns: 1fr;
@@ -600,6 +683,7 @@ input[type="range"] {
   .scoreStrip,
   .outcomeGrid,
   .ticket,
+  .chainActionButtons,
   .walletStatus,
   .walletActions,
   .agentActions {

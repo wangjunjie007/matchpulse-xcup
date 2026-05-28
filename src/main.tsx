@@ -381,6 +381,36 @@ function App() {
         </div>
       </section>
 
+      <section className="chainActionBar">
+        <div className="chainActionCopy">
+          <span>Live X Layer controls</span>
+          <strong>{walletReady ? `Connected ${shortHash(walletAddress)}` : "Connect wallet and write to testnet"}</strong>
+        </div>
+        <a
+          className="chainActionLink"
+          href={`${explorerBase}/address/${deployment.contracts.WorldCupMarketFactory}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Factory {shortHash(deployment.contracts.WorldCupMarketFactory)}
+          <ExternalLink size={14} />
+        </a>
+        <div className="chainActionButtons">
+          <button type="button" className="chainActionButton" onClick={connectWallet} disabled={walletBusy}>
+            <PlugZap size={17} />
+            {walletAddress ? "Reconnect" : "Connect"}
+          </button>
+          <button type="button" className="chainActionButton" onClick={switchToXLayer} disabled={walletBusy}>
+            <Landmark size={17} />
+            X Layer
+          </button>
+          <button type="button" className="chainActionButton hot" onClick={mintOnXLayer} disabled={walletBusy}>
+            <Zap size={17} />
+            {walletBusy ? "Waiting" : "Mint set"}
+          </button>
+        </div>
+      </section>
+
       <section className="mainGrid">
         <div className="matchBoard">
           <div className="boardHeader">
