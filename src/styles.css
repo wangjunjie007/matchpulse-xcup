@@ -2,7 +2,7 @@
   color-scheme: light;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f5f7f2;
+  background: #f4f6f0;
   color: #132019;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,6 +17,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(23, 63, 53, 0.08), transparent 360px),
+    #f4f6f0;
 }
 
 button,
@@ -28,18 +31,42 @@ button {
   cursor: pointer;
 }
 
+h1,
+h2,
+p {
+  margin: 0;
+}
+
 .shell {
   min-height: 100vh;
-  padding: 28px;
+  padding: 26px;
+}
+
+.heroConsole,
+.workspaceTabs {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.heroConsole {
+  padding: 18px;
+  border: 1px solid #cfd9cf;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.8)),
+    linear-gradient(120deg, rgba(36, 124, 103, 0.1), rgba(239, 106, 58, 0.08));
+  box-shadow: 0 18px 55px rgba(32, 45, 37, 0.1);
 }
 
 .topbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  max-width: 1240px;
-  margin: 0 auto 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 18px;
+}
+
+.titleBlock {
+  min-width: 0;
 }
 
 .eyebrow,
@@ -53,39 +80,38 @@ button {
 .eyebrow {
   color: #236c5c;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
-h1,
-h2,
-p {
-  margin: 0;
-}
-
 h1 {
-  margin-top: 5px;
-  font-size: 54px;
-  line-height: 0.95;
+  margin-top: 7px;
   color: #15221a;
+  font-size: 58px;
+  line-height: 0.95;
 }
 
 .topbar p {
-  max-width: 720px;
-  margin-top: 12px;
-  color: #56645d;
+  max-width: 760px;
+  margin-top: 13px;
+  color: #53645a;
   font-size: 16px;
-  line-height: 1.45;
+  line-height: 1.48;
+}
+
+.topControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .chainBadge {
-  min-width: 220px;
+  min-width: 214px;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid #d2dbd2;
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 14px 45px rgba(37, 49, 40, 0.08);
 }
 
 .chainBadge span {
@@ -125,26 +151,23 @@ h1 {
   color: #ffffff;
 }
 
-.chainActionBar {
+.commandBar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(260px, auto) minmax(360px, auto);
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, auto) minmax(390px, auto);
   align-items: center;
   gap: 14px;
-  max-width: 1240px;
-  margin: 0 auto 18px;
+  margin-top: 18px;
   padding: 14px;
-  border: 1px solid #cbd8ce;
   border-radius: 8px;
   background: #132a24;
   color: #ffffff;
-  box-shadow: 0 16px 50px rgba(34, 47, 38, 0.1);
 }
 
-.chainActionCopy {
+.commandStatus {
   min-width: 0;
 }
 
-.chainActionCopy span {
+.commandStatus span {
   display: block;
   color: #9ccfbd;
   font-size: 12px;
@@ -152,7 +175,7 @@ h1 {
   text-transform: uppercase;
 }
 
-.chainActionCopy strong {
+.commandStatus strong {
   display: block;
   margin-top: 4px;
   overflow: hidden;
@@ -161,7 +184,7 @@ h1 {
   white-space: nowrap;
 }
 
-.chainActionCopy small {
+.commandStatus small {
   display: block;
   margin-top: 5px;
   overflow: hidden;
@@ -172,7 +195,7 @@ h1 {
   white-space: nowrap;
 }
 
-.chainActionLink {
+.factoryPill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -187,64 +210,118 @@ h1 {
   text-decoration: none;
 }
 
-.chainActionButtons {
+.commandActions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
 }
 
-.chainActionButton {
+.chainActionButton,
+.secondaryButton,
+.primaryButton,
+.iconButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 40px;
+  gap: 8px;
+  border-radius: 8px;
+  font-weight: 900;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.chainActionButton {
+  min-height: 42px;
   padding: 10px 12px;
   border: 0;
-  border-radius: 8px;
   background: #f7faf6;
   color: #183b34;
   font-size: 13px;
-  font-weight: 900;
 }
 
-.chainActionButton.hot {
+.chainActionButton.hot,
+.primaryButton {
+  border: 0;
   background: #ef6a3a;
   color: #ffffff;
 }
 
-.chainActionButton:disabled {
+.chainActionButton:hover,
+.secondaryButton:hover,
+.primaryButton:hover,
+.iconButton:hover {
+  transform: translateY(-1px);
+}
+
+.chainActionButton:disabled,
+.secondaryButton:disabled,
+.primaryButton:disabled {
   cursor: wait;
-  opacity: 0.7;
+  opacity: 0.68;
+  transform: none;
 }
 
-.mainGrid {
+.workspaceTabs {
+  margin-top: 18px;
+}
+
+.tabList {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #d3ddd3;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(31, 45, 35, 0.08);
+}
+
+.tabList button {
+  min-width: 116px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #56675d;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.tabList button[data-state="active"] {
+  background: #173f35;
+  color: #ffffff;
+}
+
+.tabContent {
+  margin-top: 16px;
+}
+
+.marketGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(310px, 0.65fr);
   gap: 18px;
-  max-width: 1240px;
-  margin: 0 auto;
 }
 
-.matchBoard,
-.hookPanel,
-.tradePanel,
-.walletPanel,
-.deployPanel,
-.agentPanel,
-.logPanel {
+.chainGrid,
+.judgeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
+  gap: 18px;
+}
+
+.panelSurface {
   border: 1px solid #d8dfd8;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 16px 50px rgba(34, 47, 38, 0.08);
 }
 
-.matchBoard {
-  min-height: 560px;
+.matchArena {
+  min-height: 566px;
   padding: 22px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.96)),
-    radial-gradient(circle at 25% 25%, rgba(64, 145, 105, 0.18), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.96)),
     linear-gradient(120deg, #e5efe4, #ffffff);
 }
 
@@ -257,12 +334,14 @@ h1 {
 
 .boardHeader span,
 .eventCard span,
-.ticket span,
+.statTile span,
 .stakeControl span,
-.team span {
+.team span,
+.addressRow span,
+.walletNote {
   color: #69776f;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
@@ -273,12 +352,9 @@ h1 {
 }
 
 .iconButton {
-  display: grid;
   width: 42px;
   height: 42px;
-  place-items: center;
   border: 1px solid #cad5cb;
-  border-radius: 8px;
   background: #f8faf7;
   color: #1c5f4f;
 }
@@ -288,7 +364,7 @@ h1 {
   grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
   align-items: stretch;
   gap: 14px;
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 .team,
@@ -296,7 +372,7 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 160px;
+  min-height: 150px;
   border: 1px solid #ccd7ce;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
@@ -310,7 +386,7 @@ h1 {
 
 .team strong {
   margin-top: 12px;
-  font-size: 76px;
+  font-size: 74px;
   line-height: 0.9;
 }
 
@@ -327,7 +403,7 @@ h1 {
   margin-top: 6px;
   color: #a8d8c5;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
@@ -362,13 +438,21 @@ h1 {
 }
 
 .outcome {
-  min-height: 128px;
+  min-height: 122px;
   padding: 16px;
   border: 1px solid #ccd8d0;
   border-radius: 8px;
   background: #fbfcfa;
   color: #17241e;
   text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.outcome:hover {
+  transform: translateY(-2px);
 }
 
 .outcome.selected {
@@ -379,7 +463,7 @@ h1 {
 .outcome span {
   display: block;
   color: #4e5f55;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .outcome strong {
@@ -398,24 +482,27 @@ h1 {
 .walletPanel,
 .deployPanel,
 .agentPanel,
-.logPanel {
+.logPanel,
+.chartPanel,
+.judgePanel,
+.judgeChart {
   padding: 18px;
 }
 
 .panelTitle {
   color: #174b41;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 900;
   text-transform: uppercase;
 }
 
 .feeDial {
   --angle: 50deg;
   display: grid;
-  width: min(220px, 100%);
+  width: min(218px, 100%);
   aspect-ratio: 1;
   place-items: center;
-  margin: 22px auto;
+  margin: 20px auto;
   border-radius: 50%;
   background:
     radial-gradient(circle at center, #ffffff 0 55%, transparent 56%),
@@ -429,13 +516,13 @@ h1 {
 
 .feeDial span {
   font-size: 58px;
-  font-weight: 900;
+  font-weight: 950;
   line-height: 0.95;
 }
 
 .feeDial small {
   color: #6a766e;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .metrics {
@@ -454,7 +541,7 @@ h1 {
   margin: 0;
   color: #16231d;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 850;
   text-align: right;
 }
 
@@ -470,111 +557,83 @@ h1 {
   line-height: 1.35;
 }
 
+.chartPanel,
 .tradePanel,
-.walletPanel,
-.deployPanel,
 .agentPanel,
 .logPanel {
-  min-height: 220px;
+  min-height: 244px;
+}
+
+.chartBox {
+  width: 100%;
+  height: 230px;
+  margin-top: 14px;
+}
+
+.chartBox.mini {
+  height: 260px;
 }
 
 .stakeControl {
   display: grid;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 input[type="range"] {
   accent-color: #1d765c;
 }
 
-.ticket {
+.ticket,
+.walletStatus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
-.ticket div {
+.walletStatus {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.statTile {
+  min-width: 0;
   padding: 13px;
   border: 1px solid #dbe3dc;
   border-radius: 8px;
   background: #fafbf9;
 }
 
-.ticket strong {
-  display: block;
-  margin-top: 7px;
-  font-size: 20px;
-}
-
-.primaryButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 13px 16px;
-  border: 0;
-  border-radius: 8px;
-  background: #123f35;
-  color: #ffffff;
-  font-weight: 850;
-}
-
-.primaryButton:disabled,
-.secondaryButton:disabled {
-  cursor: wait;
-  opacity: 0.68;
-}
-
-.secondaryButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 11px 12px;
-  border: 1px solid #cbd8ce;
-  border-radius: 8px;
-  background: #f7faf6;
-  color: #214f43;
-  font-size: 13px;
-  font-weight: 850;
-}
-
-.walletStatus {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.walletStatus div {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid #dbe3dc;
-  border-radius: 8px;
-  background: #fafbf9;
-}
-
-.walletStatus span,
-.addressRow span,
-.walletNote {
-  color: #66766d;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.walletStatus strong {
+.statTile strong {
   display: block;
   margin-top: 7px;
   overflow: hidden;
   color: #16231d;
-  font-size: 14px;
+  font-size: 19px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.primaryButton {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 16px;
+  padding: 13px 16px;
+  font-size: 14px;
+}
+
+.secondaryButton {
+  min-height: 42px;
+  padding: 11px 12px;
+  border: 1px solid #cbd8ce;
+  background: #f7faf6;
+  color: #214f43;
+  font-size: 13px;
+}
+
+.secondaryButton.fullWidth {
+  width: 100%;
+  margin-top: 14px;
 }
 
 .walletActions {
@@ -619,7 +678,7 @@ input[type="range"] {
 
 .addressRow {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 16px;
+  grid-template-columns: 112px minmax(0, 1fr) 28px;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -640,9 +699,20 @@ input[type="range"] {
   white-space: nowrap;
 }
 
+.addressRow button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: #edf4ef;
+  color: #20624f;
+}
+
 .agentBubble {
   margin-top: 18px;
-  min-height: 106px;
+  min-height: 112px;
   padding: 16px;
   border-radius: 8px;
   background: #f1f4ef;
@@ -663,7 +733,7 @@ input[type="range"] {
   border-radius: 8px;
   color: #385146;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 850;
   text-align: center;
 }
 
@@ -700,40 +770,141 @@ input[type="range"] {
   line-height: 1.35;
 }
 
-@media (max-width: 980px) {
-  .shell {
-    padding: 18px;
+.judgePanel p {
+  margin-top: 14px;
+  color: #46584d;
+  line-height: 1.56;
+}
+
+.judgeChart {
+  grid-column: 1 / -1;
+}
+
+.tooltipContent {
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #17241e;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.tooltipArrow {
+  fill: #17241e;
+}
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 24, 19, 0.42);
+}
+
+.dialogContent {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: min(820px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(9, 22, 15, 0.28);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e2e8e1;
+}
+
+.dialogHeader h2 {
+  font-size: 18px;
+}
+
+.dialogClose {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #d6dfd7;
+  border-radius: 8px;
+  background: #f7faf6;
+}
+
+.dialogContent pre {
+  max-height: 620px;
+  margin: 0;
+  overflow: auto;
+  padding: 18px;
+  color: #213129;
+  font-size: 12px;
+  line-height: 1.48;
+}
+
+@media (max-width: 1080px) {
+  .topbar,
+  .commandBar,
+  .marketGrid,
+  .chainGrid,
+  .judgeGrid {
+    grid-template-columns: 1fr;
   }
 
-  .topbar,
-  .chainActionBar,
-  .mainGrid {
-    display: grid;
-    grid-template-columns: 1fr;
+  .topControls {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 16px;
   }
 
   h1 {
     font-size: 42px;
   }
-}
 
-@media (max-width: 640px) {
+  .heroConsole {
+    padding: 14px;
+  }
+
+  .commandActions,
   .scoreStrip,
   .outcomeGrid,
   .ticket,
-  .chainActionButtons,
   .walletStatus,
   .walletActions,
   .agentActions {
     grid-template-columns: 1fr;
   }
 
+  .tabList {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .tabList button {
+    min-width: 0;
+  }
+
   .team,
   .clock {
-    min-height: 108px;
+    min-height: 104px;
   }
 
   .team strong {
     font-size: 52px;
+  }
+
+  .chartBox {
+    height: 210px;
   }
 }

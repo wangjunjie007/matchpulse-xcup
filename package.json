@@ -11,10 +11,16 @@
     "test": "npm run test:contracts && npm run build"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@vitejs/plugin-react": "^5.1.0",
     "lucide-react": "^0.468.0",
+    "motion": "^12.40.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "recharts": "^3.8.1",
+    "sonner": "^2.0.7",
     "typescript": "^5.7.2",
     "viem": "^2.51.3",
     "vite": "^6.0.3"
