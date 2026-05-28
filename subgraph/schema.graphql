@@ -1,0 +1,49 @@
+type DynamicFeeApplied @entity(immutable: true) {
+  id: Bytes!
+  poolId: Bytes!
+  matchId: Bytes!
+  feeBps: BigInt!
+  volatilityScore: BigInt!
+  reason: String!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type LiquidityBandRebalanced @entity(immutable: true) {
+  id: Bytes!
+  poolId: Bytes!
+  matchId: Bytes!
+  concentrationBps: BigInt!
+  tickLower: BigInt!
+  tickUpper: BigInt!
+  reason: String!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SwapMeasured @entity(immutable: true) {
+  id: Bytes!
+  poolId: Bytes!
+  volumeUsd: BigInt!
+  totalVolumeUsd: BigInt!
+  swapCount: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PoolSnapshot @entity {
+  id: Bytes!
+  matchId: Bytes
+  lastFeeBps: BigInt
+  lastVolatilityScore: BigInt
+  lastConcentrationBps: BigInt
+  lastTickLower: BigInt
+  lastTickUpper: BigInt
+  totalVolumeUsd: BigInt
+  swapCount: BigInt
+  lastReason: String
+  updatedAt: BigInt!
+}

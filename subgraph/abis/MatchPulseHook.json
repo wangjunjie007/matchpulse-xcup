@@ -1,0 +1,38 @@
+[
+  {
+    "type": "event",
+    "name": "DynamicFeeApplied",
+    "anonymous": false,
+    "inputs": [
+      { "name": "poolId", "type": "bytes32", "indexed": true },
+      { "name": "matchId", "type": "bytes32", "indexed": true },
+      { "name": "feeBps", "type": "uint24", "indexed": false },
+      { "name": "volatilityScore", "type": "uint256", "indexed": false },
+      { "name": "reason", "type": "string", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "LiquidityBandRebalanced",
+    "anonymous": false,
+    "inputs": [
+      { "name": "poolId", "type": "bytes32", "indexed": true },
+      { "name": "matchId", "type": "bytes32", "indexed": true },
+      { "name": "concentrationBps", "type": "uint16", "indexed": false },
+      { "name": "tickLower", "type": "int24", "indexed": false },
+      { "name": "tickUpper", "type": "int24", "indexed": false },
+      { "name": "reason", "type": "string", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "SwapMeasured",
+    "anonymous": false,
+    "inputs": [
+      { "name": "poolId", "type": "bytes32", "indexed": true },
+      { "name": "volumeUsd", "type": "uint256", "indexed": false },
+      { "name": "totalVolumeUsd", "type": "uint256", "indexed": false },
+      { "name": "swapCount", "type": "uint256", "indexed": false }
+    ]
+  }
+]

@@ -160,7 +160,8 @@ h1 {
   font-size: 14px;
 }
 
-.languageSwitch {
+.languageSwitch,
+.experienceSwitch {
   display: grid;
   grid-template-columns: 18px 1fr 1fr;
   align-items: center;
@@ -172,7 +173,12 @@ h1 {
   background: rgba(4, 16, 14, 0.64);
 }
 
-.languageSwitch button {
+.experienceSwitch {
+  min-width: 236px;
+}
+
+.languageSwitch button,
+.experienceSwitch button {
   min-height: 32px;
   border: 0;
   border-radius: 6px;
@@ -182,7 +188,8 @@ h1 {
   font-weight: 900;
 }
 
-.languageSwitch button.active {
+.languageSwitch button.active,
+.experienceSwitch button.active {
   background: #f7d95b;
   color: #10251f;
 }
@@ -849,6 +856,8 @@ h1 {
 .agentMatrix,
 .oraclePanel,
 .strategyPanel,
+.vaultPanel,
+.tweetPanel,
 .growthPanel,
 .badgePanel,
 .proofPanel {
@@ -951,6 +960,52 @@ h1 {
   color: #617368;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.twclBox {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid #d7e5dc;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(120, 199, 231, 0.18), rgba(247, 217, 91, 0.2)),
+    #fbfcfa;
+}
+
+.twclBox span {
+  color: #557064;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.twclBox strong {
+  color: #173f35;
+  font-size: 15px;
+}
+
+.twclBox small {
+  color: #617368;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.twclTrack {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfe9df;
+}
+
+.twclTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #247c67, #f7d95b, #e94b56);
+  transition: width 260ms ease;
 }
 
 .chartPanel,
@@ -1291,7 +1346,9 @@ input[type="range"] {
 .agentRows,
 .oracleStrip,
 .strategyTicket,
-.proofLinks {
+.proofLinks,
+.vaultGrid,
+.proofPipeline {
   display: grid;
   gap: 12px;
   margin-top: 16px;
@@ -1327,7 +1384,11 @@ input[type="range"] {
 .oracleCard,
 .socialFrameMock,
 .badgeCard,
-.proofLinks a {
+.proofLinks a,
+.vaultCard,
+.vaultIntent,
+.tweetFlow > div,
+.proofPipeline > div {
   border: 1px solid #dbe5dc;
   border-radius: 8px;
   background: #f8faf7;
@@ -1383,6 +1444,10 @@ input[type="range"] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.proofPipeline {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .oracleCard {
   min-width: 0;
   padding: 14px;
@@ -1404,6 +1469,29 @@ input[type="range"] {
   color: #18261f;
 }
 
+.proofPipeline > div {
+  padding: 13px;
+}
+
+.proofPipeline span,
+.tweetFlow span,
+.vaultIntent span {
+  color: #617368;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.proofPipeline strong,
+.tweetFlow strong,
+.vaultIntent strong {
+  display: block;
+  margin-top: 6px;
+  color: #173f35;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .oracleCard meter {
   width: 100%;
   height: 10px;
@@ -1413,6 +1501,124 @@ input[type="range"] {
 
 .strategyTicket {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vaultGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vaultCard {
+  display: grid;
+  min-width: 0;
+  min-height: 246px;
+  padding: 14px;
+  color: inherit;
+  text-align: left;
+}
+
+.vaultCard.active {
+  border-color: rgba(247, 217, 91, 0.96);
+  box-shadow: 0 0 0 2px rgba(247, 217, 91, 0.38);
+}
+
+.vaultCard.warn {
+  box-shadow: inset 0 4px 0 #d69a2d;
+}
+
+.vaultCard.hot {
+  box-shadow: inset 0 4px 0 #e94b56;
+}
+
+.vaultCard.ok {
+  box-shadow: inset 0 4px 0 #2f9c6d;
+}
+
+.vaultCard span,
+.vaultCard dt {
+  color: #617368;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.vaultCard strong {
+  margin-top: 8px;
+  color: #173f35;
+  font-size: 20px;
+}
+
+.vaultCard p {
+  margin-top: 9px;
+  color: #52645a;
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.vaultCard dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 10px;
+  margin: 14px 0 0;
+}
+
+.vaultCard dd {
+  margin: 0;
+  overflow: hidden;
+  color: #18261f;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vaultIntent {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 13px;
+}
+
+.tweetComposer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.tweetComposer input {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #cfdcd2;
+  border-radius: 8px;
+  background: #fbfcfa;
+  color: #18261f;
+}
+
+.tweetComposer button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #247c67;
+  color: #ffffff;
+  font-weight: 950;
+}
+
+.tweetFlow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.tweetFlow > div {
+  padding: 13px;
+}
+
+.tweetFlow.invalid > div {
+  background: #fff6ed;
 }
 
 .decisionBar {
@@ -1668,7 +1874,10 @@ input[type="range"] {
   .judgeGrid,
   .warRoomGrid,
   .agentRow,
-  .socialFrameMock {
+  .socialFrameMock,
+  .vaultGrid,
+  .tweetFlow,
+  .proofPipeline {
     grid-template-columns: 1fr;
   }
 
@@ -1698,7 +1907,8 @@ input[type="range"] {
   .agentActions,
   .socialFrameMock,
   .strategyTicket,
-  .proofLinks a {
+  .proofLinks a,
+  .tweetComposer {
     grid-template-columns: 1fr;
   }
 
@@ -1777,6 +1987,10 @@ input[type="range"] {
 
   .aaChecklist {
     display: grid;
+  }
+
+  .experienceSwitch {
+    width: 100%;
   }
 
   .proofLinks a {

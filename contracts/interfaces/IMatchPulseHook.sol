@@ -20,6 +20,9 @@ interface IMatchPulseHook {
     struct SwapReport {
         uint24 appliedFeeBps;
         uint256 volatilityScore;
+        uint16 liquidityConcentrationBps;
+        int24 tickLower;
+        int24 tickUpper;
         string reason;
     }
 

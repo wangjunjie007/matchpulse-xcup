@@ -1,37 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-contract MatchOracleMock {
-    enum Phase {
-        Scheduled,
-        LiveFirstHalf,
-        HalfTime,
-        LiveSecondHalf,
-        ExtraTime,
-        Penalties,
-        Finalized
-    }
+import {IMatchOracle} from "./interfaces/IMatchOracle.sol";
 
-    struct MatchState {
-        string homeTeam;
-        string awayTeam;
-        uint64 kickoff;
-        uint8 homeScore;
-        uint8 awayScore;
-        uint8 redCards;
-        uint8 minute;
-        Phase phase;
-        bool upsetSignal;
-        bool exists;
-    }
+contract MatchOracleMock is IMatchOracle {
 
     address public owner;
-    mapping(bytes32 matchId => MatchState state) private matches;
+    mapping(bytes32 matchId => IMatchOracle.MatchState state) private matches;
 
     event MatchCreated(bytes32 indexed matchId, string homeTeam, string awayTeam, uint64 kickoff);
     event MatchStateUpdated(
         bytes32 indexed matchId,
-        Phase phase,
+        IMatchOracle.Phase phase,
         uint8 minute,
         uint8 homeScore,
         uint8 awayScore,
@@ -56,11 +36,11 @@ contract MatchOracleMock {
         external
         onlyOwner
     {
-        MatchState storage state = matches[matchId];
+        IMatchOracle.MatchState storage state = matches[matchId];
         state.homeTeam = homeTeam;
         state.awayTeam = awayTeam;
         state.kickoff = kickoff;
-        state.phase = Phase.Scheduled;
+        state.phase = IMatchOracle.Phase.Scheduled;
         state.exists = true;
 
         emit MatchCreated(matchId, homeTeam, awayTeam, kickoff);
@@ -68,7 +48,7 @@ contract MatchOracleMock {
 
     function updateMatch(
         bytes32 matchId,
-        Phase phase,
+        IMatchOracle.Phase phase,
         uint8 minute,
         uint8 homeScore,
         uint8 awayScore,
@@ -78,7 +58,7 @@ contract MatchOracleMock {
         if (!matches[matchId].exists) revert UnknownMatch();
         if (minute > 130) revert InvalidMinute();
 
-        MatchState storage state = matches[matchId];
+        IMatchOracle.MatchState storage state = matches[matchId];
         state.phase = phase;
         state.minute = minute;
         state.homeScore = homeScore;
@@ -89,7 +69,7 @@ contract MatchOracleMock {
         emit MatchStateUpdated(matchId, phase, minute, homeScore, awayScore, redCards, upsetSignal);
     }
 
-    function getMatch(bytes32 matchId) external view returns (MatchState memory state) {
+    function getMatch(bytes32 matchId) external view returns (IMatchOracle.MatchState memory state) {
         state = matches[matchId];
         if (!state.exists) revert UnknownMatch();
     }

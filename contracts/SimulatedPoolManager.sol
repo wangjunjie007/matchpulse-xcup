@@ -18,9 +18,11 @@ contract SimulatedPoolManager {
         bytes32 indexed poolId,
         address indexed sender,
         bool zeroForOne,
-        int256 amountSpecified,
         uint24 appliedFeeBps,
         uint256 volatilityScore,
+        uint16 liquidityConcentrationBps,
+        int24 tickLower,
+        int24 tickUpper,
         string reason
     );
 
@@ -54,17 +56,27 @@ contract SimulatedPoolManager {
             hookData: ""
         });
 
-        (bytes4 beforeSelector, uint24 quotedFee) = hook.beforeSwap(pool.key, context);
+        (bytes4 beforeSelector,) = hook.beforeSwap(pool.key, context);
         if (beforeSelector != IMatchPulseHook.beforeSwap.selector) revert HookRejected();
 
-        (bytes4 afterSelector, IMatchPulseHook.SwapReport memory report) = hook.afterSwap(pool.key, context, volumeUsd);
+        bytes4 afterSelector;
+        IMatchPulseHook.SwapReport memory report;
+        (afterSelector, report) = hook.afterSwap(pool.key, context, volumeUsd);
         if (afterSelector != IMatchPulseHook.afterSwap.selector) revert HookRejected();
 
-        feeBps = report.appliedFeeBps;
-        volatilityScore = report.volatilityScore;
-        reason = report.reason;
+        emit SwapSimulated(
+            poolId,
+            msg.sender,
+            zeroForOne,
+            report.appliedFeeBps,
+            report.volatilityScore,
+            report.liquidityConcentrationBps,
+            report.tickLower,
+            report.tickUpper,
+            report.reason
+        );
 
-        emit SwapSimulated(poolId, msg.sender, zeroForOne, amountSpecified, quotedFee, volatilityScore, reason);
+        return (report.appliedFeeBps, report.volatilityScore, report.reason);
     }
 
     function getPoolId(IMatchPulseHook.PoolKey memory key) public pure returns (bytes32) {

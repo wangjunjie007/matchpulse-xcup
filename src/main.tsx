@@ -50,8 +50,9 @@ import { Toaster, toast } from "sonner";
 import { createPublicClient, createWalletClient, custom, formatEther, formatUnits, http, parseEther } from "viem";
 import deployment from "../deployments/xlayer-testnet-1952.json";
 import stadiumNightUrl from "./assets/stadium-night.png";
-import { MatchState, baseFeeBps, quoteFee } from "./lib/feeModel";
+import { MatchState, baseFeeBps, quoteFee, quoteLiquidityBand } from "./lib/feeModel";
 import "./styles.css";
+import type { LiquidityBandQuote } from "./lib/feeModel";
 
 type Outcome = "Argentina" | "Draw" | "Brazil";
 type Language = "zh" | "en";
@@ -97,12 +98,27 @@ type OracleSignal = {
   source: Record<Language, string>;
 };
 
+type AgentVault = {
+  name: Record<Language, string>;
+  persona: Record<Language, string>;
+  thesis: Record<Language, string>;
+  allocation: Record<Language, string>;
+  risk: Record<Language, string>;
+  nav: string;
+  followers: string;
+  tone: "ok" | "warn" | "hot";
+};
+
 type SocialMode = "farcaster" | "telegram";
+type ExperienceMode = "fan" | "pro";
 
 type PoolMetricsState = {
   totalVolumeUsd: string;
   swapCount: string;
   lastFeeBps: string;
+  lastLiquidityConcentrationBps: string;
+  lastTickLower: string;
+  lastTickUpper: string;
   lastReason: string;
 };
 
@@ -273,16 +289,21 @@ const publicClient = createPublicClient({
 const copy = {
   zh: {
     eyebrow: "X Layer 黑客松 MVP",
-    intro: "国际足球杯赛预测市场控制台：用 v4-style Hook 把比赛波动、红牌和比分压力直接转化为链上 swap fee。",
+    intro: "国际足球杯赛预测市场控制台：把比赛波动、红牌和终场压力转化为 X Layer 上可验证的预测市场动作。",
+    introPro: "国际足球杯赛预测市场控制台：用 v4-style Hook 同时调整动态 swap fee 与时间加权集中流动性 TWCL。",
     chainName: "X Layer 测试网",
     chainId: "Chain 1952",
     language: "语言",
+    fanMode: "球迷模式",
+    proMode: "专业模式",
+    fanModeNote: "隐藏 Hook、Gas、流动性等术语，用球迷能理解的动作描述链上交互。",
     liveControls: "X Layer 链上控制",
     connectAndWrite: "连接钱包并写入测试网",
     stadiumSignal: "国际足球杯赛 · 夜场",
     broadcastMode: "实时比赛信号",
     liveMinute: "比赛时间",
-    matchRisk: "市场风险",
+    matchRisk: "胜率动力",
+    matchRiskPro: "市场风险",
     crowdHeat: "现场热度",
     cupTicker: "杯赛控制台",
     matchTimeline: "比赛时间线",
@@ -314,7 +335,8 @@ const copy = {
     advanceLabel: "推进比赛事件",
     currentEvent: "当前事件",
     buyOutcome: "买入结果",
-    hookEngine: "Hook 费率引擎",
+    hookEngine: "胜率动力引擎",
+    hookEnginePro: "Hook + TWCL 引擎",
     bps: "bps",
     baseFee: "基础费率",
     volatilityPremium: "波动溢价",
@@ -326,9 +348,11 @@ const copy = {
     tradeSimulator: "交易模拟器",
     stake: "投入 USDC",
     selected: "选择结果",
-    hookFee: "Hook 费用",
+    hookFee: "助威成本",
+    hookFeePro: "Hook 费用",
     outcomeTokens: "结果 Token",
-    simulateSwap: "模拟 Swap",
+    simulateSwap: "模拟打 call",
+    simulateSwapPro: "模拟 Swap",
     walletWrite: "X Layer 钱包写入",
     wallet: "钱包",
     notConnected: "未连接",
@@ -364,7 +388,8 @@ const copy = {
     chainQuote: "链上 Hook 报价",
     chainQuoteSource: "数据来自 X Layer testnet 的 MatchPulseHook.quoteFee",
     refreshChainData: "刷新链上数据",
-    chainHookTest: "链上 Hook 测试交易",
+    chainHookTest: "链上战况测试交易",
+    chainHookTestPro: "链上 Hook 测试交易",
     chainHookTestNote: "调用 SimulatedPoolManager.simulateSwap，在链上触发 Hook beforeSwap / afterSwap。",
     hookTestSubmitted: "链上 Hook 测试交易已提交",
     settlementPanel: "Testnet 结算闭环",
@@ -387,11 +412,19 @@ const copy = {
     swapCount: "Swap 次数",
     totalVolume: "累计量",
     lastFee: "最近费率",
+    twclBand: "终场冲刺带",
+    twclBandPro: "TWCL Tick 区间",
+    concentration: "胜率动力注入",
+    concentrationPro: "流动性集中度",
+    fanAction: "战队打 call",
+    tweetToTrade: "推文即交易",
+    vaults: "AI 策略池",
+    oracleProof: "真实数据证明路径",
     disabledFeature: "演示占位，未接真实后端",
     whyItMatters: "为什么重要",
     whyText: "体育预测市场会在进球、红牌、点球和终场前反转时遭遇极高波动。MatchPulse 把这些信号放进 Hook 层，动态提高交易成本，降低 LP 被 toxic flow 冲击的风险。",
     validation: "验证结果",
-    validationText: "合约测试 3/3 通过，配置校验脚本检查 chainId/地址/bytes32/交易哈希类型，前端构建通过，X Layer testnet 合约已部署，GitHub Pages 可公开访问。",
+    validationText: "合约测试 4/4 通过，新增 TWCL 流动性收敛断言；配置校验脚本检查 chainId/地址/bytes32/交易哈希类型，前端构建通过，X Layer testnet 合约已部署，GitHub Pages 可公开访问。",
     phase: {
       Scheduled: "赛前",
       LiveFirstHalf: "上半场直播",
@@ -411,6 +444,17 @@ const copy = {
       "red-card shock": "红牌冲击",
       "upset signal": "冷门信号"
     },
+    liquidityReasons: {
+      "pre-match wide liquidity band": "赛前宽防守",
+      "half-time liquidity reset": "中场重新排兵",
+      "settlement redemption band": "赛后结算通道",
+      "live balanced liquidity band": "直播攻防通道",
+      "final-whistle squeeze": "终场前压缩",
+      "close-score convergence": "胶着比分收敛",
+      "red-card concentration": "红牌后收紧",
+      "upset flow concentration": "冷门交易收敛",
+      "injury-time doom option": "伤停补时极速收敛"
+    },
     agentScheduled: "市场处于启动流动性阶段。此时 Hook 仍报价基础费率，适合 LP 先为两边结果注入流动性。",
     agentFinalized: "已进入赛后结算窗口。我可以结算市场、生成赎回说明，并整理链上证明链接。",
     agentLivePrefix: "当前直播波动费率为",
@@ -418,16 +462,21 @@ const copy = {
   },
   en: {
     eyebrow: "X Layer Hackathon MVP",
-    intro: "An international football cup prediction-market console where a v4-style Hook converts match volatility into on-chain swap fees.",
+    intro: "An international football cup prediction-market console that turns match swings, red cards, and late pressure into verifiable X Layer actions.",
+    introPro: "An international football cup prediction-market console where a v4-style Hook adjusts both dynamic swap fees and time-weighted concentrated liquidity.",
     chainName: "X Layer testnet",
     chainId: "Chain 1952",
     language: "Language",
+    fanMode: "Fan mode",
+    proMode: "Pro mode",
+    fanModeNote: "Hides Hook, gas, and liquidity jargon behind fan-readable actions.",
     liveControls: "Live X Layer controls",
     connectAndWrite: "Connect wallet and write to testnet",
     stadiumSignal: "International football cup · Night match",
     broadcastMode: "Live match signal",
     liveMinute: "Match clock",
-    matchRisk: "Market risk",
+    matchRisk: "Win boost",
+    matchRiskPro: "Market risk",
     crowdHeat: "Crowd heat",
     cupTicker: "Cup control desk",
     matchTimeline: "Match timeline",
@@ -459,7 +508,8 @@ const copy = {
     advanceLabel: "Advance match event",
     currentEvent: "Current event",
     buyOutcome: "Buy outcome",
-    hookEngine: "Hook fee engine",
+    hookEngine: "Win boost engine",
+    hookEnginePro: "Hook + TWCL engine",
     bps: "bps",
     baseFee: "Base fee",
     volatilityPremium: "Volatility premium",
@@ -471,9 +521,11 @@ const copy = {
     tradeSimulator: "Trade simulator",
     stake: "Stake USDC",
     selected: "Selected",
-    hookFee: "Hook fee",
+    hookFee: "Boost cost",
+    hookFeePro: "Hook fee",
     outcomeTokens: "Outcome tokens",
-    simulateSwap: "Simulate swap",
+    simulateSwap: "Boost team",
+    simulateSwapPro: "Simulate swap",
     walletWrite: "X Layer wallet write",
     wallet: "Wallet",
     notConnected: "Not connected",
@@ -509,7 +561,8 @@ const copy = {
     chainQuote: "On-chain Hook quote",
     chainQuoteSource: "Read from MatchPulseHook.quoteFee on X Layer testnet",
     refreshChainData: "Refresh chain data",
-    chainHookTest: "On-chain Hook test tx",
+    chainHookTest: "On-chain match test tx",
+    chainHookTestPro: "On-chain Hook test tx",
     chainHookTestNote: "Calls SimulatedPoolManager.simulateSwap and triggers Hook beforeSwap / afterSwap on-chain.",
     hookTestSubmitted: "On-chain Hook test submitted",
     settlementPanel: "Testnet settlement loop",
@@ -532,11 +585,19 @@ const copy = {
     swapCount: "Swap count",
     totalVolume: "Total volume",
     lastFee: "Last fee",
+    twclBand: "Final push lane",
+    twclBandPro: "TWCL tick band",
+    concentration: "Win boost injection",
+    concentrationPro: "Liquidity concentration",
+    fanAction: "Team boost",
+    tweetToTrade: "Tweet-to-Trade",
+    vaults: "AI strategy vaults",
+    oracleProof: "Real data proof path",
     disabledFeature: "Demo placeholder, no backend action wired",
     whyItMatters: "Why it matters",
     whyText: "Sports prediction markets face extreme volatility during goals, red cards, penalties and late reversals. MatchPulse moves those signals into the Hook layer to reduce LP exposure to toxic flow.",
     validation: "Validation",
-    validationText: "Contract tests pass 3/3, the config validator checks numeric chainId plus address / bytes32 / tx-hash formats, frontend build passes, X Layer testnet contracts are deployed, and GitHub Pages is publicly accessible.",
+    validationText: "Contract tests pass 4/4 with TWCL convergence assertions, the config validator checks numeric chainId plus address / bytes32 / tx-hash formats, frontend build passes, X Layer testnet contracts are deployed, and GitHub Pages is publicly accessible.",
     phase: {
       Scheduled: "Scheduled",
       LiveFirstHalf: "Live First Half",
@@ -555,6 +616,17 @@ const copy = {
       "close-score pressure": "close-score pressure",
       "red-card shock": "red-card shock",
       "upset signal": "upset signal"
+    },
+    liquidityReasons: {
+      "pre-match wide liquidity band": "pre-match wide lane",
+      "half-time liquidity reset": "half-time reset",
+      "settlement redemption band": "settlement redemption lane",
+      "live balanced liquidity band": "live balanced lane",
+      "final-whistle squeeze": "final-whistle squeeze",
+      "close-score convergence": "close-score convergence",
+      "red-card concentration": "red-card concentration",
+      "upset flow concentration": "upset flow concentration",
+      "injury-time doom option": "injury-time doom option"
     },
     agentScheduled: "Market is in bootstrap mode. I would ask LPs to seed both teams now because the Hook still quotes base fees.",
     agentFinalized: "is the market leader after final whistle. I can settle the market, prepare redemption copy, and publish the proof links.",
@@ -689,10 +761,53 @@ const badgeLevels = [
   { label: { zh: "世界杯量化官", en: "World Cup Quant" }, score: 94 }
 ];
 
+const agentVaults: AgentVault[] = [
+  {
+    name: { zh: "保守型教练", en: "Conservative Coach" },
+    persona: { zh: "低回撤 · 防守优先", en: "Low drawdown · defense first" },
+    thesis: {
+      zh: "比分胶着时优先保留平局保护，只在 TWCL 收敛确认后小额跟单。",
+      en: "Keeps draw protection during close scores and follows only after TWCL confirms convergence."
+    },
+    allocation: { zh: "ARG 42% / DRAW 38% / BRA 20%", en: "ARG 42% / DRAW 38% / BRA 20%" },
+    risk: { zh: "低", en: "Low" },
+    nav: "1.034",
+    followers: "1,284",
+    tone: "ok"
+  },
+  {
+    name: { zh: "狂热型球迷", en: "Fanatic Fan" },
+    persona: { zh: "高进攻 · 情绪动量", en: "High attack · sentiment momentum" },
+    thesis: {
+      zh: "社交热度爆发时放大胜率动力，红牌或伤停补时仍保留自动止损。",
+      en: "Amplifies the win boost during social surges while keeping auto stop-loss near red cards or injury time."
+    },
+    allocation: { zh: "ARG 68% / DRAW 12% / BRA 20%", en: "ARG 68% / DRAW 12% / BRA 20%" },
+    risk: { zh: "高", en: "High" },
+    nav: "1.118",
+    followers: "3,972",
+    tone: "hot"
+  },
+  {
+    name: { zh: "量化裁判", en: "Quant Referee" },
+    persona: { zh: "赔率偏差 · 事件驱动", en: "Odds dislocation · event driven" },
+    thesis: {
+      zh: "只在链上报价、社交情报和 Oracle 证据三者一致时执行。",
+      en: "Acts only when on-chain quotes, social intelligence, and oracle evidence align."
+    },
+    allocation: { zh: "ARG 35% / DRAW 28% / BRA 37%", en: "ARG 35% / DRAW 28% / BRA 37%" },
+    risk: { zh: "中", en: "Medium" },
+    nav: "1.076",
+    followers: "2,406",
+    tone: "warn"
+  }
+];
+
 const initialBook: Record<Outcome, number> = { Argentina: 43, Draw: 24, Brazil: 33 };
 
 function App() {
   const [language, setLanguage] = useState<Language>("zh");
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>("fan");
   const [step, setStep] = useState(0);
   const [dynamicMatch, setDynamicMatch] = useState<TimelineEntry>(timeline[0]);
   const [autoSimRunning, setAutoSimRunning] = useState(true);
@@ -714,6 +829,9 @@ function App() {
     totalVolumeUsd: "--",
     swapCount: "--",
     lastFeeBps: "--",
+    lastLiquidityConcentrationBps: "--",
+    lastTickLower: "--",
+    lastTickUpper: "--",
     lastReason: "--"
   });
   const [marketState, setMarketState] = useState<MarketState>({
@@ -729,6 +847,7 @@ function App() {
   const t = copy[language];
   const match = dynamicMatch;
   const fee = useMemo(() => quoteFee(match.state), [match.state]);
+  const liquidityBand = useMemo(() => quoteLiquidityBand(match.state), [match.state]);
   const feeSeries = useMemo(() => buildFeeSeries(language, match), [language, match]);
   const impliedPrice = book[selectedOutcome] / 100;
   const feeCost = (stake * fee.feeBps) / 10_000;
@@ -741,6 +860,15 @@ function App() {
   const activeAgentIndex = simPulse % warRoomEvents.length;
   const strategyConfidence = Math.min(99, Math.round((fee.volatilityScore + chainQuote.volatilityScore + warRoomEvents[activeAgentIndex].confidence) / 3));
   const autonomyScore = Math.min(100, 68 + activeAgentIndex * 8 + Math.round(fee.volatilityScore / 8));
+  const fanMode = experienceMode === "fan";
+  const introText = fanMode ? t.intro : t.introPro;
+  const matchRiskLabel = fanMode ? t.matchRisk : t.matchRiskPro;
+  const hookEngineLabel = fanMode ? t.hookEngine : t.hookEnginePro;
+  const hookFeeLabel = fanMode ? t.hookFee : t.hookFeePro;
+  const simulateSwapLabel = fanMode ? t.simulateSwap : t.simulateSwapPro;
+  const chainHookTestLabel = fanMode ? t.chainHookTest : t.chainHookTestPro;
+  const twclBandLabel = fanMode ? t.twclBand : t.twclBandPro;
+  const concentrationLabel = fanMode ? t.concentration : t.concentrationPro;
   const heroStyle = {
     "--stadium-image": `url(${stadiumNightUrl})`,
     "--intensity": `${intensityPercent}%`
@@ -922,6 +1050,9 @@ function App() {
         totalVolumeUsd: metrics[0].toString(),
         swapCount: metrics[1].toString(),
         lastFeeBps: metrics[2].toString(),
+        lastLiquidityConcentrationBps: "--",
+        lastTickLower: "--",
+        lastTickUpper: "--",
         lastReason: metrics[5] || "--"
       });
       setMarketState({
@@ -1356,7 +1487,7 @@ function App() {
                 {t.stadiumSignal}
               </div>
               <h1>MatchPulse</h1>
-              <p>{t.intro}</p>
+              <p>{introText}</p>
               <div className={`cupTicker ${autoSimRunning ? "isLive" : ""}`} aria-label={t.cupTicker}>
                 <span>ARG</span>
                 <strong>{match.state.homeScore}</strong>
@@ -1368,6 +1499,15 @@ function App() {
             </div>
 
             <div className="topControls">
+              <div className="experienceSwitch" aria-label={t.fanModeNote}>
+                <Users size={16} />
+                <button type="button" className={experienceMode === "fan" ? "active" : ""} onClick={() => setExperienceMode("fan")}>
+                  {t.fanMode}
+                </button>
+                <button type="button" className={experienceMode === "pro" ? "active" : ""} onClick={() => setExperienceMode("pro")}>
+                  {t.proMode}
+                </button>
+              </div>
               <div className="languageSwitch" aria-label={t.language}>
                 <Languages size={16} />
                 <button type="button" className={language === "zh" ? "active" : ""} onClick={() => setLanguage("zh")}>
@@ -1388,7 +1528,7 @@ function App() {
           <div className="broadcastRail">
             <StatTile label={t.broadcastMode} value={t.phase[match.state.phase]} />
             <StatTile label={t.liveMinute} value={`${match.state.minute || "00"}'`} />
-            <StatTile label={t.matchRisk} value={`${fee.feeBps} bps`} />
+            <StatTile label={matchRiskLabel} value={fanMode ? `${liquidityBand.concentrationBps / 100}%` : `${fee.feeBps} bps`} />
             <StatTile label={t.crowdHeat} value={crowdHeatLabel(fee.volatilityScore, language)} />
           </div>
 
@@ -1552,7 +1692,7 @@ function App() {
               </motion.div>
 
               <aside className="hookPanel panelSurface">
-                <PanelTitle icon={<Zap size={18} />} label={t.hookEngine} />
+                <PanelTitle icon={<Zap size={18} />} label={hookEngineLabel} />
                 <div className="feeDial" style={{ "--angle": `${Math.min(300, fee.feeBps) * 1.2}deg` } as React.CSSProperties}>
                   <div>
                     <span>{fee.feeBps}</span>
@@ -1564,7 +1704,21 @@ function App() {
                   <Metric label={t.volatilityPremium} value={`${fee.premiumBps} bps`} />
                   <Metric label={t.volatilityScore} value={`${fee.volatilityScore}/100`} />
                   <Metric label={t.reason} value={translateFeeReason(fee.reason, language)} />
+                  <Metric label={concentrationLabel} value={`${(liquidityBand.concentrationBps / 100).toFixed(0)}%`} />
+                  <Metric label={twclBandLabel} value={`${liquidityBand.tickLower} / ${liquidityBand.tickUpper}`} />
                 </dl>
+                <div className="twclBox">
+                  <span>{twclBandLabel}</span>
+                  <strong>{translateLiquidityReason(liquidityBand.reason, language)}</strong>
+                  <div className="twclTrack">
+                    <i style={{ width: `${Math.max(6, 100 - liquidityBand.bandWidth / 48)}%` }} />
+                  </div>
+                  <small>
+                    {language === "zh"
+                      ? `越接近终场，通道越窄；当前宽度 ${liquidityBand.bandWidth} ticks。`
+                      : `The lane narrows near final whistle; current width is ${liquidityBand.bandWidth} ticks.`}
+                  </small>
+                </div>
                 <div className="chainQuoteBox">
                   <span>{t.chainQuote}</span>
                   <strong>{chainQuote.feeBps} bps</strong>
@@ -1608,12 +1762,12 @@ function App() {
                 <div className="ticket">
                   <StatTile label={t.selected} value={outcomeCopy[language][selectedOutcome]} />
                   <StatTile label={t.stake} value={`$${stake.toFixed(0)}`} />
-                  <StatTile label={t.hookFee} value={`$${feeCost.toFixed(2)}`} />
+                  <StatTile label={hookFeeLabel} value={`$${feeCost.toFixed(2)}`} />
                   <StatTile label={t.outcomeTokens} value={tokens.toFixed(2)} />
                 </div>
                 <button type="button" className="primaryButton" onClick={() => trade(selectedOutcome)}>
                   <Activity size={18} />
-                  {t.localOnly}: {t.simulateSwap}
+                  {t.localOnly}: {simulateSwapLabel}
                 </button>
                 <p className="walletNote">{t.localOnlyNote}</p>
               </section>
@@ -1654,8 +1808,10 @@ function App() {
               explorerBase={explorerBase}
               chainQuote={chainQuote}
               feeBps={fee.feeBps}
+              liquidityBand={liquidityBand}
               intensityPercent={intensityPercent}
               walletReady={walletReady}
+              fanMode={fanMode}
             />
           </Tabs.Content>
 
@@ -1684,7 +1840,7 @@ function App() {
                 </button>
                 <button type="button" className="secondaryButton fullWidth" onClick={simulateHookOnChain} disabled={walletBusy}>
                   <Activity size={17} />
-                  {t.chainHookTest}
+                  {chainHookTestLabel}
                 </button>
                 <button type="button" className="secondaryButton fullWidth" onClick={refreshChainData} disabled={chainReadBusy}>
                   <RefreshCw size={17} />
@@ -1720,8 +1876,22 @@ function App() {
                   <StatTile label={t.swapCount} value={poolMetricsState.swapCount} />
                   <StatTile label={t.totalVolume} value={poolMetricsState.totalVolumeUsd} />
                   <StatTile label={t.lastFee} value={poolMetricsState.lastFeeBps === "--" ? "--" : `${poolMetricsState.lastFeeBps} bps`} />
+                  <StatTile
+                    label={concentrationLabel}
+                    value={
+                      poolMetricsState.lastLiquidityConcentrationBps === "--"
+                        ? `${(liquidityBand.concentrationBps / 100).toFixed(0)}%`
+                        : `${(Number(poolMetricsState.lastLiquidityConcentrationBps) / 100).toFixed(0)}%`
+                    }
+                  />
                 </div>
-                <p className="walletNote">{poolMetricsState.lastReason === "--" ? t.chainHookTestNote : translateFeeReason(poolMetricsState.lastReason, language)}</p>
+                <p className="walletNote">
+                  {poolMetricsState.lastReason === "--" ? t.chainHookTestNote : translateFeeReason(poolMetricsState.lastReason, language)}
+                  {" · "}
+                  {language === "zh"
+                    ? "当前公开部署仍是旧 Hook；新版 TWCL 已在代码和测试中实现，待重新部署后会由事件索引层读取。"
+                    : "The public deployment is still the previous Hook; the new TWCL logic is implemented in code/tests and will be read by the event indexer after redeploy."}
+                </p>
               </section>
 
               <section className="panelSurface settlementPanel">
@@ -1848,8 +2018,10 @@ function WarRoomPanel({
   explorerBase,
   chainQuote,
   feeBps,
+  liquidityBand,
   intensityPercent,
-  walletReady
+  walletReady,
+  fanMode
 }: {
   language: Language;
   activeAgentIndex: number;
@@ -1861,10 +2033,16 @@ function WarRoomPanel({
   explorerBase: string;
   chainQuote: ChainQuote;
   feeBps: number;
+  liquidityBand: LiquidityBandQuote;
   intensityPercent: number;
   walletReady: boolean;
+  fanMode: boolean;
 }) {
   const activeAgent = warRoomEvents[activeAgentIndex];
+  const [selectedVaultIndex, setSelectedVaultIndex] = useState(1);
+  const [tweetCommand, setTweetCommand] = useState("@MatchPulseAI follow ARG 25 OKB #ARGvBRA");
+  const [tweetParsed, setTweetParsed] = useState(parseTweetCommand(tweetCommand));
+  const selectedVault = agentVaults[selectedVaultIndex];
   const followCopy =
     socialMode === "farcaster"
       ? language === "zh"
@@ -1875,6 +2053,29 @@ function WarRoomPanel({
         : "Launch Mini App inside a Telegram chat";
   const explorerTx = deployment.transactions.verifiedSimulatedSwap;
   const badge = badgeLevels[Math.min(badgeLevels.length - 1, Math.floor(strategyConfidence / 34))];
+
+  function followVault(index: number) {
+    setSelectedVaultIndex(index);
+    const vault = agentVaults[index];
+    toast.success(language === "zh" ? "已生成跟单意图" : "Follow intent generated", {
+      description:
+        language === "zh"
+          ? `${vault.name.zh} 策略进入钱包确认队列。`
+          : `${vault.name.en} strategy moved into the wallet-confirmation queue.`
+    });
+  }
+
+  function parseTweet() {
+    const parsed = parseTweetCommand(tweetCommand);
+    setTweetParsed(parsed);
+    toast.message(language === "zh" ? "推文指令已解析" : "Tweet command parsed", {
+      description: parsed.valid
+        ? `${parsed.side} · ${parsed.amount} ${parsed.asset}`
+        : language === "zh"
+          ? "格式示例: @MatchPulseAI follow ARG 25 OKB #ARGvBRA"
+          : "Example: @MatchPulseAI follow ARG 25 OKB #ARGvBRA"
+    });
+  }
 
   return (
     <section className="warRoomGrid">
@@ -1923,7 +2124,7 @@ function WarRoomPanel({
       </section>
 
       <section className="oraclePanel panelSurface">
-        <PanelTitle icon={<ScanEye size={18} />} label={language === "zh" ? "多模态 Oracle 验证" : "Multimodal oracle verification"} />
+        <PanelTitle icon={<ScanEye size={18} />} label={fanMode ? copy[language].oracleProof : language === "zh" ? "多模态 Oracle 验证" : "Multimodal oracle verification"} />
         <div className="oracleStrip">
           {oracleSignals.map((signal) => (
             <div className="oracleCard" key={signal.label.en}>
@@ -1937,6 +2138,20 @@ function WarRoomPanel({
             </div>
           ))}
         </div>
+        <div className="proofPipeline">
+          <div>
+            <span>TLSNotary</span>
+            <strong>{language === "zh" ? "权威体育 API 响应证明" : "Authoritative sports API response proof"}</strong>
+          </div>
+          <div>
+            <span>ZK Adapter</span>
+            <strong>{language === "zh" ? "隐藏 API Key，只公开比分承诺" : "Hide API key, publish score commitment"}</strong>
+          </div>
+          <div>
+            <span>Oracle Adapter</span>
+            <strong>{language === "zh" ? "替换 Mock，驱动 settle/redeem" : "Replace mock and drive settle/redeem"}</strong>
+          </div>
+        </div>
       </section>
 
       <section className="strategyPanel panelSurface">
@@ -1944,8 +2159,14 @@ function WarRoomPanel({
         <div className="strategyTicket">
           <StatTile label={language === "zh" ? "当前 Agent" : "Active agent"} value={activeAgent.role[language]} />
           <StatTile label={language === "zh" ? "建议方向" : "Suggested side"} value={outcomeCopy[language][selectedOutcome]} />
-          <StatTile label={language === "zh" ? "本地 Hook 费率" : "Local Hook fee"} value={`${feeBps} bps`} />
-          <StatTile label={language === "zh" ? "链上 Hook 报价" : "On-chain Hook quote"} value={`${chainQuote.feeBps} bps`} />
+          <StatTile
+            label={fanMode ? (language === "zh" ? "胜率动力" : "Win boost") : language === "zh" ? "本地 Hook 费率" : "Local Hook fee"}
+            value={fanMode ? `${(liquidityBand.concentrationBps / 100).toFixed(0)}%` : `${feeBps} bps`}
+          />
+          <StatTile
+            label={fanMode ? (language === "zh" ? "终场通道" : "Final lane") : language === "zh" ? "链上 Hook 报价" : "On-chain Hook quote"}
+            value={fanMode ? translateLiquidityReason(liquidityBand.reason, language) : `${chainQuote.feeBps} bps`}
+          />
         </div>
         <div className="decisionBar">
           <span>{language === "zh" ? "策略置信度" : "Strategy confidence"}</span>
@@ -1956,6 +2177,71 @@ function WarRoomPanel({
           {language === "zh"
             ? "当前版本在前端演示自治决策链路；真实执行仍通过链上按钮和钱包确认完成，避免把未接入的后端 Agent 冒充为真实资金托管。"
             : "This version demonstrates the autonomous decision loop in the frontend; real execution still goes through the on-chain buttons and wallet confirmation, so no unwired backend agent is misrepresented as fund custody."}
+        </p>
+      </section>
+
+      <section className="vaultPanel panelSurface">
+        <PanelTitle icon={<Users size={18} />} label={copy[language].vaults} />
+        <div className="vaultGrid">
+          {agentVaults.map((vault, index) => (
+            <button
+              key={vault.name.en}
+              type="button"
+              className={`vaultCard ${vault.tone} ${index === selectedVaultIndex ? "active" : ""}`}
+              onClick={() => followVault(index)}
+            >
+              <span>{vault.persona[language]}</span>
+              <strong>{vault.name[language]}</strong>
+              <p>{vault.thesis[language]}</p>
+              <dl>
+                <dt>{language === "zh" ? "仓位" : "Allocation"}</dt>
+                <dd>{vault.allocation[language]}</dd>
+                <dt>{language === "zh" ? "净值" : "NAV"}</dt>
+                <dd>{vault.nav}</dd>
+                <dt>{language === "zh" ? "风险" : "Risk"}</dt>
+                <dd>{vault.risk[language]}</dd>
+              </dl>
+            </button>
+          ))}
+        </div>
+        <div className="vaultIntent">
+          <strong>
+            {language === "zh" ? "已选策略池" : "Selected vault"}: {selectedVault.name[language]}
+          </strong>
+          <span>
+            {language === "zh"
+              ? `${selectedVault.followers} 人跟单，生产版会映射为可申购 Vault 合约和风控上限。`
+              : `${selectedVault.followers} followers; production maps this to subscribable vault contracts with risk caps.`}
+          </span>
+        </div>
+      </section>
+
+      <section className="tweetPanel panelSurface">
+        <PanelTitle icon={<MessageCircle size={18} />} label={copy[language].tweetToTrade} />
+        <div className="tweetComposer">
+          <input value={tweetCommand} onChange={(event) => setTweetCommand(event.target.value)} aria-label={copy[language].tweetToTrade} />
+          <button type="button" onClick={parseTweet}>
+            {language === "zh" ? "解析" : "Parse"}
+          </button>
+        </div>
+        <div className={`tweetFlow ${tweetParsed.valid ? "valid" : "invalid"}`}>
+          <div>
+            <span>{language === "zh" ? "社交索引器" : "Social indexer"}</span>
+            <strong>{tweetParsed.valid ? `#${tweetParsed.market}` : language === "zh" ? "等待有效格式" : "Waiting for valid format"}</strong>
+          </div>
+          <div>
+            <span>{language === "zh" ? "会话授权" : "Session key"}</span>
+            <strong>{walletReady ? (language === "zh" ? "可提交" : "Ready") : language === "zh" ? "等待钱包" : "Wallet gated"}</strong>
+          </div>
+          <div>
+            <span>{language === "zh" ? "X Layer 动作" : "X Layer action"}</span>
+            <strong>{tweetParsed.valid ? `${tweetParsed.side} ${tweetParsed.amount} ${tweetParsed.asset}` : "--"}</strong>
+          </div>
+        </div>
+        <p className="walletNote">
+          {language === "zh"
+            ? "当前为前端解析器演示；生产版需要 X/Farcaster/Lens Indexer、反女巫校验、AA Session Key 和后端风控队列。"
+            : "This is a frontend parser demo; production needs an X/Farcaster/Lens indexer, anti-sybil checks, AA session keys, and a backend risk queue."}
         </p>
       </section>
 
@@ -2321,6 +2607,25 @@ function readError(error: unknown, language: Language) {
 function translateFeeReason(reason: string, language: Language) {
   const reasons = copy[language].feeReasons as Record<string, string>;
   return reasons[reason] ?? reason;
+}
+
+function translateLiquidityReason(reason: string, language: Language) {
+  const reasons = copy[language].liquidityReasons as Record<string, string>;
+  return reasons[reason] ?? reason;
+}
+
+function parseTweetCommand(raw: string) {
+  const match = raw.match(/@MatchPulseAI\s+follow\s+(ARG|BRA|DRAW)\s+(\d+(?:\.\d+)?)\s+(OKB|USDC)\s+#([A-Za-z0-9]+)/i);
+  if (!match) {
+    return { valid: false, side: "--", amount: "--", asset: "--", market: "--" };
+  }
+  return {
+    valid: true,
+    side: match[1].toUpperCase(),
+    amount: match[2],
+    asset: match[3].toUpperCase(),
+    market: match[4]
+  };
 }
 
 function initialLogs(language: Language): EventLog[] {

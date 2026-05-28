@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {IMatchOracle} from "./interfaces/IMatchOracle.sol";
 import {MatchOracleMock} from "./MatchOracleMock.sol";
 import {PredictionToken} from "./PredictionToken.sol";
 
@@ -108,8 +109,8 @@ contract WorldCupMarketFactory {
         Market storage market = _requireMarket(matchId);
         if (market.settled) revert AlreadySettled();
 
-        MatchOracleMock.MatchState memory state = oracle.getMatch(matchId);
-        if (state.phase != MatchOracleMock.Phase.Finalized) revert NotFinalized();
+        IMatchOracle.MatchState memory state = oracle.getMatch(matchId);
+        if (state.phase != IMatchOracle.Phase.Finalized) revert NotFinalized();
 
         Outcome winner;
         if (state.homeScore > state.awayScore) {
