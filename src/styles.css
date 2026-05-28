@@ -54,6 +54,7 @@ p {
 .heroConsole {
   position: relative;
   overflow: hidden;
+  --intensity: 8%;
   padding: 18px;
   border: 1px solid rgba(231, 241, 224, 0.34);
   border-radius: 8px;
@@ -80,6 +81,13 @@ p {
   position: absolute;
   inset: 0;
   background:
+    linear-gradient(90deg, rgba(120, 199, 231, 0.16) 0 18%, transparent 18% 82%, rgba(254, 220, 74, 0.16) 82%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 24px);
+}
+
+.heroConsole.simLive .stadiumWash::after {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(233, 75, 86, 0.32), transparent var(--intensity)),
     linear-gradient(90deg, rgba(120, 199, 231, 0.16) 0 18%, transparent 18% 82%, rgba(254, 220, 74, 0.16) 82%),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 24px);
 }
@@ -215,6 +223,10 @@ h1 {
   background: #e94b56;
 }
 
+.cupTicker.isLive i {
+  animation: liveBlink 1s ease-in-out infinite;
+}
+
 .broadcastRail {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -233,6 +245,108 @@ h1 {
 
 .broadcastRail .statTile strong {
   color: #ffffff;
+}
+
+.simulationDeck {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.75fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(2, 12, 10, 0.58);
+}
+
+.simulationCopy {
+  min-width: 0;
+}
+
+.simulationCopy span,
+.intensityHeader span {
+  display: block;
+  color: #a8d8c5;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.simulationCopy strong {
+  display: block;
+  margin-top: 4px;
+  color: #ffffff;
+  font-size: 17px;
+}
+
+.simulationCopy small {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #d9e8de;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.intensityBlock {
+  min-width: 0;
+}
+
+.intensityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.intensityHeader strong {
+  color: #f7d95b;
+  font-size: 14px;
+}
+
+.intensityTrack {
+  position: relative;
+  height: 11px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.intensityTrack::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--intensity);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #78c7e7, #f7d95b 58%, #e94b56);
+  box-shadow: 0 0 18px rgba(233, 75, 86, 0.34);
+  transition: width 420ms ease;
+}
+
+.intensityTrack i {
+  position: absolute;
+  top: -6px;
+  left: calc(var(--intensity) - 8px);
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  animation: pulseRing 760ms ease-out;
+}
+
+.simulationActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 8px;
+}
+
+.simulationActions .secondaryButton {
+  margin: 0;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(247, 250, 246, 0.95);
 }
 
 .commandBar {
@@ -630,6 +744,9 @@ h1 {
   border-color: rgba(247, 217, 91, 0.78);
   background: rgba(247, 217, 91, 0.18);
   color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(247, 217, 91, 0.18),
+    0 0 28px rgba(247, 217, 91, 0.12);
 }
 
 .timelineNode.passed {
@@ -712,6 +829,7 @@ h1 {
   display: block;
   margin: 12px 0 6px;
   font-size: 32px;
+  transition: color 180ms ease;
 }
 
 .outcome small {
@@ -748,7 +866,8 @@ h1 {
   border-radius: 50%;
   background:
     radial-gradient(circle at center, #ffffff 0 55%, transparent 56%),
-    conic-gradient(#ef6a3a var(--angle), #e5ebe5 0);
+    conic-gradient(#e94b56 var(--angle), #e5ebe5 0);
+  transition: background 260ms ease;
 }
 
 .feeDial div {
@@ -1038,6 +1157,7 @@ input[type="range"] {
   border-left: 4px solid #5ea176;
   border-radius: 6px;
   background: #f7faf6;
+  animation: logEnter 280ms ease both;
 }
 
 .log.warn {
@@ -1136,9 +1256,47 @@ input[type="range"] {
   line-height: 1.48;
 }
 
+@keyframes liveBlink {
+  0%,
+  100% {
+    opacity: 0.36;
+    transform: scale(0.82);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.28);
+  }
+}
+
+@keyframes pulseRing {
+  from {
+    opacity: 0.85;
+    transform: scale(0.2);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+@keyframes logEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1080px) {
   .topbar,
   .commandBar,
+  .simulationDeck,
   .marketGrid,
   .chainGrid,
   .judgeGrid {
@@ -1175,6 +1333,18 @@ input[type="range"] {
   .broadcastRail,
   .walletStatus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .simulationDeck {
+    gap: 12px;
+  }
+
+  .simulationCopy small {
+    white-space: normal;
+  }
+
+  .simulationActions {
+    grid-template-columns: 1fr;
   }
 
   .broadcastRail .statTile {

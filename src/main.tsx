@@ -63,6 +63,11 @@ type ChainQuote = {
 };
 
 type TokenBalances = Record<Outcome, string>;
+type TimelineEntry = {
+  label: Record<Language, string>;
+  state: MatchState;
+  detail: Record<Language, string>;
+};
 
 type PoolMetricsState = {
   totalVolumeUsd: string;
@@ -170,6 +175,7 @@ const erc20Abi = [
 
 const mintValueEth = "0.001";
 const poolId = "0x0175cb519b77203a16fff09cd0e584e7432888376982fa289402b45b04507430" as HexValue;
+const simulationIntervalMs = 2_400;
 const publicClient = createPublicClient({
   chain: xLayerTestnet,
   transport: http(deployment.rpcUrl)
@@ -191,6 +197,14 @@ const copy = {
     crowdHeat: "现场热度",
     cupTicker: "杯赛控制台",
     matchTimeline: "比赛时间线",
+    simulationMode: "动态比赛模拟",
+    simulationRunning: "本地模拟运行中",
+    simulationPaused: "本地模拟已暂停",
+    simulationNote: "只驱动前端比赛强度、赔率和 Hook 费率展示；真实链上读写仍来自 X Layer testnet。",
+    intensity: "激烈程度",
+    pauseSimulation: "暂停模拟",
+    resumeSimulation: "继续模拟",
+    resetSimulation: "重置比赛",
     connected: "已连接",
     noWallet: "未检测到钱包，请在 OKX Wallet 浏览器打开，或安装并启用 OKX Wallet / MetaMask。",
     noWalletDetected: "暂未检测到钱包 Provider",
@@ -313,6 +327,14 @@ const copy = {
     crowdHeat: "Crowd heat",
     cupTicker: "Cup control desk",
     matchTimeline: "Match timeline",
+    simulationMode: "Dynamic match simulation",
+    simulationRunning: "Local simulation running",
+    simulationPaused: "Local simulation paused",
+    simulationNote: "Drives frontend match intensity, odds and Hook fee display only; real chain reads/writes still come from X Layer testnet.",
+    intensity: "Intensity",
+    pauseSimulation: "Pause simulation",
+    resumeSimulation: "Resume simulation",
+    resetSimulation: "Reset match",
     connected: "Connected",
     noWallet: "No injected wallet found. Open this page in OKX Wallet browser, or install/enable OKX Wallet or MetaMask.",
     noWalletDetected: "No wallet provider detected yet",
@@ -427,7 +449,7 @@ const outcomeCopy: Record<Language, Record<Outcome, string>> = {
   en: { Argentina: "Argentina", Draw: "Draw", Brazil: "Brazil" }
 };
 
-const timeline: Array<{ label: Record<Language, string>; state: MatchState; detail: Record<Language, string> }> = [
+const timeline: TimelineEntry[] = [
   {
     label: { zh: "赛前准备", en: "Pre-match" },
     detail: {
@@ -475,6 +497,9 @@ const initialBook: Record<Outcome, number> = { Argentina: 43, Draw: 24, Brazil: 
 function App() {
   const [language, setLanguage] = useState<Language>("zh");
   const [step, setStep] = useState(0);
+  const [dynamicMatch, setDynamicMatch] = useState<TimelineEntry>(timeline[0]);
+  const [autoSimRunning, setAutoSimRunning] = useState(true);
+  const [simPulse, setSimPulse] = useState(0);
   const [book, setBook] = useState(initialBook);
   const [stake, setStake] = useState(150);
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome>("Argentina");
@@ -497,9 +522,9 @@ function App() {
   const [logs, setLogs] = useState<EventLog[]>(initialLogs("zh"));
 
   const t = copy[language];
-  const match = timeline[step];
+  const match = dynamicMatch;
   const fee = useMemo(() => quoteFee(match.state), [match.state]);
-  const feeSeries = useMemo(() => buildFeeSeries(language), [language]);
+  const feeSeries = useMemo(() => buildFeeSeries(language, match), [language, match]);
   const impliedPrice = book[selectedOutcome] / 100;
   const feeCost = (stake * fee.feeBps) / 10_000;
   const tokens = (stake - feeCost) / Math.max(impliedPrice, 0.01);
@@ -507,6 +532,11 @@ function App() {
   const walletReady = Boolean(walletAddress && walletChainId === deployment.chainId);
   const providerName = getWalletProviderName();
   const explorerBase = deployment.explorer.replace(/\/$/, "");
+  const intensityPercent = Math.max(8, Math.min(100, fee.volatilityScore));
+  const heroStyle = {
+    "--stadium-image": `url(${stadiumNightUrl})`,
+    "--intensity": `${intensityPercent}%`
+  } as React.CSSProperties;
 
   useEffect(() => {
     const provider = getWalletProvider();
@@ -540,6 +570,35 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!autoSimRunning) return;
+
+    const interval = window.setInterval(() => {
+      setDynamicMatch((current) => {
+        const next = nextSimulatedMatch(current);
+        const nextQuote = quoteFee(next.state);
+        const tone: EventLog["tone"] = nextQuote.feeBps > 100 ? "hot" : nextQuote.feeBps > baseFeeBps ? "warn" : "ok";
+        setStep(nearestTimelineIndex(next.state));
+        setSimPulse((value) => value + 1);
+        setBook((currentBook) => adjustBookForMatch(currentBook, next.state, nextQuote.volatilityScore));
+        setLogs((currentLogs) =>
+          [
+            {
+              id: Date.now(),
+              label: next.label[language],
+              detail: `${next.detail[language]} ${copy[language].hookFeeLog} ${nextQuote.feeBps} bps.`,
+              tone
+            },
+            ...currentLogs
+          ].slice(0, 6)
+        );
+        return next;
+      });
+    }, simulationIntervalMs);
+
+    return () => window.clearInterval(interval);
+  }, [autoSimRunning, language]);
+
+  useEffect(() => {
     const provider = getWalletProvider();
     if (!provider || !walletAddress) {
       setWalletBalance("--");
@@ -559,6 +618,7 @@ function App() {
   function advance() {
     const next = (step + 1) % timeline.length;
     setStep(next);
+    setDynamicMatch(timeline[next]);
     const quote = quoteFee(timeline[next].state);
     const tone: EventLog["tone"] = quote.feeBps > 100 ? "hot" : quote.feeBps > baseFeeBps ? "warn" : "ok";
     setLogs((current) =>
@@ -569,6 +629,26 @@ function App() {
           detail: `${t.hookFeeLog} ${quote.feeBps} bps: ${translateFeeReason(quote.reason, language)}.`,
           tone
         },
+        ...current
+      ].slice(0, 6)
+    );
+  }
+
+  function resetSimulation() {
+    setStep(0);
+    setDynamicMatch(timeline[0]);
+    setBook(initialBook);
+    setAutoSimRunning(true);
+    setSimPulse((value) => value + 1);
+    const log: EventLog = {
+      id: Date.now(),
+      label: t.simulationMode,
+      detail: language === "zh" ? "比赛已回到赛前状态，动态模拟重新启动。" : "Match reset to pre-match and dynamic simulation restarted.",
+      tone: "ok"
+    };
+    setLogs((current) =>
+      [
+        log,
         ...current
       ].slice(0, 6)
     );
@@ -861,8 +941,8 @@ function App() {
         <Toaster richColors position="top-right" />
 
         <motion.section
-          className="heroConsole"
-          style={{ "--stadium-image": `url(${stadiumNightUrl})` } as React.CSSProperties}
+          className={`heroConsole ${autoSimRunning ? "simLive" : ""}`}
+          style={heroStyle}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
@@ -875,7 +955,7 @@ function App() {
               </div>
               <h1>MatchPulse</h1>
               <p>{t.intro}</p>
-              <div className="cupTicker" aria-label={t.cupTicker}>
+              <div className={`cupTicker ${autoSimRunning ? "isLive" : ""}`} aria-label={t.cupTicker}>
                 <span>ARG</span>
                 <strong>{match.state.homeScore}</strong>
                 <i />
@@ -908,6 +988,33 @@ function App() {
             <StatTile label={t.liveMinute} value={`${match.state.minute || "00"}'`} />
             <StatTile label={t.matchRisk} value={`${fee.feeBps} bps`} />
             <StatTile label={t.crowdHeat} value={crowdHeatLabel(fee.volatilityScore, language)} />
+          </div>
+
+          <div className="simulationDeck">
+            <div className="simulationCopy">
+              <span>{t.simulationMode}</span>
+              <strong>{autoSimRunning ? t.simulationRunning : t.simulationPaused}</strong>
+              <small>{t.simulationNote}</small>
+            </div>
+            <div className="intensityBlock">
+              <div className="intensityHeader">
+                <span>{t.intensity}</span>
+                <strong>{intensityPercent}%</strong>
+              </div>
+              <div className="intensityTrack" aria-hidden="true">
+                <i key={simPulse} />
+              </div>
+            </div>
+            <div className="simulationActions">
+              <button type="button" className="secondaryButton" onClick={() => setAutoSimRunning((value) => !value)}>
+                <Activity size={16} />
+                {autoSimRunning ? t.pauseSimulation : t.resumeSimulation}
+              </button>
+              <button type="button" className="secondaryButton" onClick={resetSimulation}>
+                <RefreshCw size={16} />
+                {t.resetSimulation}
+              </button>
+            </div>
           </div>
 
           <div className="commandBar">
@@ -992,6 +1099,7 @@ function App() {
                         className={`timelineNode ${index === step ? "active" : ""} ${index < step ? "passed" : ""}`}
                         onClick={() => {
                           setStep(index);
+                          setDynamicMatch(timeline[index]);
                           const quote = quoteFee(timeline[index].state);
                           const tone: EventLog["tone"] = quote.feeBps > 100 ? "hot" : quote.feeBps > baseFeeBps ? "warn" : "ok";
                           setLogs((current) =>
@@ -1365,6 +1473,145 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
+function nextSimulatedMatch(current: TimelineEntry): TimelineEntry {
+  const state = current.state;
+  if (state.phase === "Finalized") {
+    return {
+      label: { zh: "新一场开赛", en: "New match kickoff" },
+      detail: {
+        zh: "新一轮杯赛模拟开始，比分和红牌状态已清零。",
+        en: "A fresh cup simulation starts with score and red-card state reset."
+      },
+      state: { phase: "Scheduled", minute: 0, homeScore: 0, awayScore: 0, redCards: 0, upsetSignal: false }
+    };
+  }
+
+  const minute = Math.min(95, state.minute + randomInt(4, 9));
+  const phase = phaseForMinute(minute);
+  const live = phase !== "Scheduled" && phase !== "Finalized" && phase !== "HalfTime";
+  const late = minute >= 75;
+  const close = Math.abs(state.homeScore - state.awayScore) <= 1;
+  const goalChance = live ? (late && close ? 0.24 : 0.12) : 0;
+  const redChance = live && state.redCards < 2 ? (late ? 0.08 : 0.04) : 0;
+  let homeScore = state.homeScore;
+  let awayScore = state.awayScore;
+  let redCards = state.redCards;
+
+  const eventRoll = Math.random();
+  if (eventRoll < goalChance) {
+    if (Math.random() < 0.53) homeScore += 1;
+    else awayScore += 1;
+  }
+  if (Math.random() < redChance) redCards += 1;
+
+  const upsetSignal = live && (awayScore > homeScore || (minute >= 58 && awayScore === homeScore && Math.random() < 0.52));
+  const nextState: MatchState = {
+    phase,
+    minute,
+    homeScore,
+    awayScore,
+    redCards,
+    upsetSignal
+  };
+
+  return {
+    label: simulatedLabel(nextState),
+    detail: simulatedDetail(nextState),
+    state: nextState
+  };
+}
+
+function phaseForMinute(minute: number): MatchState["phase"] {
+  if (minute <= 0) return "Scheduled";
+  if (minute < 45) return "LiveFirstHalf";
+  if (minute < 50) return "HalfTime";
+  if (minute < 91) return "LiveSecondHalf";
+  return "Finalized";
+}
+
+function simulatedLabel(state: MatchState): Record<Language, string> {
+  if (state.phase === "Finalized") return { zh: "终场哨响", en: "Final whistle" };
+  if (state.phase === "HalfTime") return { zh: "中场调整", en: "Half-time reset" };
+  if (state.redCards > 0 && state.minute >= 70) return { zh: "红牌后高压", en: "Red-card pressure" };
+  if (state.upsetSignal) return { zh: "冷门信号升温", en: "Upset signal rising" };
+  if (state.minute >= 75) return { zh: "终场前冲刺", en: "Late match surge" };
+  if (Math.abs(state.homeScore - state.awayScore) <= 1 && state.minute > 0) return { zh: "胶着拉锯", en: "Close-score tension" };
+  return { zh: "比赛推进", en: "Match flow" };
+}
+
+function simulatedDetail(state: MatchState): Record<Language, string> {
+  const score = `${state.homeScore}-${state.awayScore}`;
+  if (state.phase === "Finalized") {
+    return {
+      zh: `终场比分 ${score}，市场进入结果赎回和结算观察。`,
+      en: `Final score ${score}; the market moves into redemption and settlement watch.`
+    };
+  }
+  if (state.redCards > 0) {
+    return {
+      zh: `${state.minute}' 出现红牌压力，比分 ${score}，LP 保护费率上调。`,
+      en: `${state.minute}' red-card pressure at ${score}; LP protection fees step up.`
+    };
+  }
+  if (state.upsetSignal) {
+    return {
+      zh: `${state.minute}' 冷门交易流升温，比分 ${score}，市场重新定价。`,
+      en: `${state.minute}' upset flow is heating up at ${score}; markets reprice.`
+    };
+  }
+  if (state.minute >= 75) {
+    return {
+      zh: `${state.minute}' 进入终场前窗口，比分 ${score}，交易强度抬升。`,
+      en: `${state.minute}' enters the late window at ${score}; trading intensity rises.`
+    };
+  }
+  return {
+    zh: `${state.minute}' 比赛持续推进，比分 ${score}，动态费率跟随现场压力变化。`,
+    en: `${state.minute}' match flow continues at ${score}; dynamic fees track live pressure.`
+  };
+}
+
+function nearestTimelineIndex(state: MatchState) {
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  timeline.forEach((item, index) => {
+    const distance = Math.abs(item.state.minute - state.minute);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
+}
+
+function adjustBookForMatch(current: Record<Outcome, number>, state: MatchState, volatilityScore: number) {
+  const pressure = 0.5 + volatilityScore / 38;
+  const winner: Outcome = state.homeScore > state.awayScore ? "Argentina" : state.awayScore > state.homeScore ? "Brazil" : "Draw";
+  const next = { ...current };
+
+  if (winner === "Draw") {
+    next.Draw += 1.4 * pressure;
+    next.Argentina += state.upsetSignal ? 0.3 : 0.7;
+    next.Brazil += state.upsetSignal ? 0.9 : 0.5;
+  } else {
+    next[winner] += 1.8 * pressure;
+    next.Draw += Math.max(0.2, 0.8 - pressure * 0.08);
+    const trailing = winner === "Argentina" ? "Brazil" : "Argentina";
+    next[trailing] += state.minute >= 75 ? -0.6 : 0.2;
+  }
+
+  if (state.redCards > 0) next.Draw += 0.45 * state.redCards;
+  return normalizeBook({
+    Argentina: Math.max(6, next.Argentina),
+    Draw: Math.max(5, next.Draw),
+    Brazil: Math.max(6, next.Brazil)
+  });
+}
+
+function randomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 function crowdHeatLabel(score: number, language: Language) {
   if (language === "zh") return score > 60 ? "高热" : score > 20 ? "升温" : "平稳";
   return score > 60 ? "HOT" : score > 20 ? "ACTIVE" : "CALM";
@@ -1416,15 +1663,26 @@ function initialLogs(language: Language): EventLog[] {
   ];
 }
 
-function buildFeeSeries(language: Language) {
-  return timeline.map((item) => {
+function buildFeeSeries(language: Language, liveMatch: TimelineEntry) {
+  const series = timeline.map((item) => {
     const quote = quoteFee(item.state);
     return {
       name: item.label[language],
+      minute: item.state.minute,
       fee: quote.feeBps,
       volatility: quote.volatilityScore
     };
   });
+  const liveQuote = quoteFee(liveMatch.state);
+  if (!timeline.some((item) => item.state.minute === liveMatch.state.minute && item.state.phase === liveMatch.state.phase)) {
+    series.push({
+      name: language === "zh" ? `实时 ${liveMatch.state.minute}'` : `Live ${liveMatch.state.minute}'`,
+      minute: liveMatch.state.minute,
+      fee: liveQuote.feeBps,
+      volatility: liveQuote.volatilityScore
+    });
+  }
+  return series.sort((a, b) => a.minute - b.minute);
 }
 
 function getWalletProvider(): EthereumProvider | undefined {
